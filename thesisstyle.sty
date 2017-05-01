@@ -1,0 +1,199 @@
+\usepackage[utf8]{inputenc} % This defines the font-encoding you prefer to use
+\usepackage{fourier}
+\pagestyle{headings}
+\usepackage{marvosym}
+\usepackage[pdftex]{graphicx}
+\usepackage{placeins}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{rotating}
+\usepackage{amsmath}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{url}
+\usepackage{multicol}
+\usepackage[numbers]{natbib}
+\usepackage{setspace}
+\usepackage{textcomp}
+\usepackage[bottom]{footmisc}
+\usepackage{parcolumns}
+\usepackage[export]{adjustbox}
+\linespread{1.5}
+
+\usepackage{chngcntr}
+\counterwithout{footnote}{chapter}
+
+\usepackage{afterpage}
+\newcommand\blankpage{%
+    \null
+    \thispagestyle{empty}%
+    \addtocounter{page}{-1}%
+    \newpage}
+
+\newenvironment{remark}{\par\mbox{}\par\noindent{\bfseries \emph{Remark}\/}:\normalfont}{\par}
+\newenvironment{defin}{\par\mbox{}\par\noindent\bfseries \emph{\Pointinghand\ }\normalfont}{\par}
+\setcounter{tocdepth}{2} 
+\usepackage[colorlinks=false, pdfstartview=FitV]{hyperref}
+\pdfcompresslevel=9
+
+
+\usepackage{hyphenat}
+\hyphenation{di-rect-ional}
+
+\usepackage[usenames]{xcolor}
+\usepackage{listings}
+\definecolor{listinggray}{gray}{0.9}
+\definecolor{lbcolor}{rgb}{0.9,0.9,0.9}
+\lstdefinestyle{CustomC}{
+    tabsize=4,    
+    language=C,
+    basicstyle=\footnotesize\ttfamily,
+    upquote=true,
+    aboveskip={1.5\baselineskip},
+    columns=fixed,
+    showstringspaces=false,
+    extendedchars=false,
+    escapechar=@,
+    breaklines=true,
+    prebreak = \raisebox{0ex}[0ex][0ex]{\ensuremath{\hookleftarrow}},
+    frame=tb,
+    aboveskip=1em,
+    belowskip=1em,
+    numbers=left,
+    showtabs=false,
+    showspaces=false,
+    showstringspaces=false,
+    identifierstyle=\ttfamily,
+    keywordstyle=\color{blue},
+    commentstyle=\color{yellow!30!black},
+    stringstyle=\color{green!40!black},
+    numberstyle=\color{black},
+    identifierstyle=\color{black},
+}
+\lstdefinestyle{CustomC++}{
+    tabsize=4,    
+    language=C++,
+    basicstyle=\footnotesize\ttfamily,
+    upquote=true,
+    aboveskip={1.5\baselineskip},
+    columns=fixed,
+    showstringspaces=false,
+    extendedchars=false,
+    escapechar=@,
+    breaklines=true,
+    prebreak = \raisebox{0ex}[0ex][0ex]{\ensuremath{\hookleftarrow}},
+    frame=tb,
+    aboveskip=1em,
+    belowskip=1em,
+    numbers=left,
+    showtabs=false,
+    showspaces=false,
+    showstringspaces=false,
+    identifierstyle=\ttfamily,
+    keywordstyle=\color{blue},
+    commentstyle=\color{yellow!30!black},
+    stringstyle=\color{green!40!black},
+    numberstyle=\color{black},
+    identifierstyle=\color{black},
+}
+\lstdefinelanguage{Golang}{
+    morekeywords=[1]{package,import,func,type,struct,return,defer,panic,%
+        recover,select,var,const,iota,go},%
+    morekeywords=[2]{string,uint,uint8,uint16,uint32,uint64,int,int8,int16,%
+        int32,int64,bool,float32,float64,complex64,complex128,byte,rune,uintptr,%
+        error,interface},%
+    morekeywords=[3]{map,slice,make,new,nil,len,cap,copy,close,true,false,%
+        delete,append,real,imag,complex,chan,},%
+    morekeywords=[4]{for,break,continue,range,goto,switch,case,fallthrough,if,%
+        else,default,},%
+    sensitive=true,%
+    morecomment=[l]{//},%
+    morecomment=[s]{/*}{*/},%
+    morestring=[b]',%
+    morestring=[b]",%
+    morestring=[s]{`}{`},%
+}
+\lstdefinestyle{CustomGo}{
+    tabsize=4,    
+    language=Golang,
+    basicstyle=\footnotesize\ttfamily,
+    upquote=true,
+    aboveskip={1.5\baselineskip},
+    columns=fixed,
+    showstringspaces=false,
+    extendedchars=false,
+    escapechar=@,
+    breaklines=true,
+    prebreak = \raisebox{0ex}[0ex][0ex]{\ensuremath{\hookleftarrow}},
+    frame=tb,
+    aboveskip=1em,
+    belowskip=1em,
+    numbers=left,
+    showtabs=false,
+    showspaces=false,
+    showstringspaces=false,
+    identifierstyle=\ttfamily,
+    keywordstyle=\color{blue},
+    commentstyle=\color{yellow!30!black},
+    stringstyle=\color{green!40!black},
+    numberstyle=\color{black},
+    identifierstyle=\color{black},
+}
+\lstdefinelanguage{Occam}{
+    morekeywords=[1]{SEQ,PAR,IF,ALT,WHILE,CASE,VALOF,PROC,PROCESSOR,PLACED,PRI,RESULT},%
+    morekeywords=[2]{INT,INT16,INT32,INT64,REAL,REAL32,REAL64,BYTE,BOOL,TRUE,FALSE,AFTER,AND,AT,BITAND,BITNOT,BITOR,CHAN,FOR,FROM,INCLUDE,IS,MAPPING,MAP,SET,ONTO,DO,CONFIG,MINUS,PLUS,TIMES,REM,MOSTNEG,MOSTPOS,NETWORK,NODE,EDGE,CONNECT,WITH,HOST,ARC,NOT,OF,OR,PLACE,PORT,PROTOCOL,RETYPES,ROUND,TRUNC,SIZE,SKIP,STOP,TIMER,USE,VAL},%
+    sensitive=true,%
+    morecomment=[l]{--},%
+    morestring=[b]",%
+}
+\lstdefinestyle{CustomOccam}{
+    tabsize=4,    
+    language=Occam,
+    basicstyle=\footnotesize\ttfamily,
+    upquote=true,
+    aboveskip={1.5\baselineskip},
+    columns=fixed,
+    showstringspaces=false,
+    extendedchars=false,
+    escapechar=@,
+    breaklines=true,
+    prebreak = \raisebox{0ex}[0ex][0ex]{\ensuremath{\hookleftarrow}},
+    frame=tb,
+    aboveskip=1em,
+    belowskip=1em,
+    numbers=left,
+    showtabs=false,
+    showspaces=false,
+    showstringspaces=false,
+    identifierstyle=\ttfamily,
+    keywordstyle=\color{blue},
+    commentstyle=\color{yellow!30!black},
+    stringstyle=\color{green!40!black},
+    numberstyle=\color{black},
+    identifierstyle=\color{black},
+}
+\lstdefinestyle{CustomAsm}{
+    tabsize=4,    
+    language=[x86masm]Assembler,
+    basicstyle=\footnotesize\ttfamily,
+    upquote=true,
+    aboveskip={1.5\baselineskip},
+    columns=fixed,
+    showstringspaces=false,
+    extendedchars=false,
+    escapechar=|,
+    breaklines=true,
+    prebreak = \raisebox{0ex}[0ex][0ex]{\ensuremath{\hookleftarrow}},
+    frame=tb,
+    aboveskip=1em,
+    belowskip=1em,
+    numbers=left,
+    showtabs=false,
+    showspaces=false,
+    showstringspaces=false,
+    identifierstyle=\ttfamily,
+    keywordstyle=\color{blue},
+    commentstyle=\color{yellow!30!black},
+    stringstyle=\color{green!40!black},
+    numberstyle=\color{black},
+    identifierstyle=\color{black},
+}

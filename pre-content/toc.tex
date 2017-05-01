@@ -1,0 +1,24 @@
+% !TEX encoding = UTF-8 Unicode
+%!TEX root = main.tex
+% !TEX spellcheck = en-US
+%%=========================================
+
+\newpage
+
+\begingroup
+\makeatletter
+% Redefine the \chapter* header macro to remove vertical space
+\def\@makeschapterhead#1{%
+  %\vspace*{50\p@}% Remove the vertical space
+  {\parindent \z@ \raggedright
+    \normalfont
+    \interlinepenalty\@M
+    \Huge \bfseries  #1\par\nobreak
+    \vskip 35\p@
+  }}
+\makeatother
+
+\tableofcontents
+\endgroup
+
+\afterpage{\blankpage}
