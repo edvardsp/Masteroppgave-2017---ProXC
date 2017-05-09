@@ -4,20 +4,227 @@
 %%=========================================
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Background}
 \label{ch:background}
 
-\section{Multicore}
-\section{Threading Models} 
-% HW and SW threads
-\section{Communicating Sequential Processes}
+
+In this chapter a more in-depth explanation of different topics mentioned in the introduction, as well as other relevant topics, is presented. These topics cover the required background knowledge for the project, as well as existing programming languages and libraries that shows some equivalence to this project. Each topic is presented on its own, and how it relates to this project. 
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Concurrent Programming}
-% mutexes, threads, atomic operations
+\label{sec:concurrent_programming}
+% threads, semaphores, mutexes, monitors, atomic operations
 % deadlocks, livelocks, starvation
+
+
+Concurrent programming, or concurrent computing, is a form of computing to express programs or systems which execute multiple sequential computations in interleaving time periods. These computations are said to be running \textit{concurrently}, compared to \textit{sequentially} (one completing before the next start). These computations are often called \textit{processes} or \textit{threads}, which indicate an individual, separate execution point. 
+
+The notion of concurrency stems from the limitations of sequential programs and how all programs in the end is translated to machine code. Given the program is executed on a uniprocessor, only one machine code instruction will be executed at any given time\footnote{Machine code execution is vastly more complex then presented here, e.g. pipelining and instruction-level parallelism (ILP), but the sequential nature of program execution still stands}.  Since all computations in a sequential program must be executed sequential, it can be unintuitive how to model and implement concurrent systems which does not easily translate to sequential systems. Concurrency aims to provide an abstraction level to bridge this limitation. Concurrent systems are therefore much more expressive than sequential systems, since it does not matter whether the program is executed in parallel or not, e.g. on a multiprocessor or uniprocessor.
+
+It is important to note that concurrent programming is not the same as parallel programming. Concurrency is a form of abstraction, disregarding how the actual program execution is achieved. Parallelism refers to, in contrast to concurrency, the condition of a program being executed on multiple processors at once. One could therefore say that concurrency is possible on both uniprocessors and multiprocessors, while parallelism is only possible on multiprocessors.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Threading Models}
+\label{subsec:threading_models}
+
+Threading is the foundation of concurrency, which allows multiple computations to be executed simultaneously. Some sort of threading mechanism must be implemented on the platform to provide concurrency. On \textit{operating systems} (OS), threading mechanisms mainly falls into three types of threading models: \textit{user-threads}, \textit{kernel-threads}, or \textit{hybrid-threads}, which is a combination of the two first models. \citet{c++csp2} goes into further detail on the three models, and a short summary is presented below.
+
+
+\subsubsection{User-Threading}
+
+User-threads are a cooperative scheduling of threads executed in user space\footnote{Regarding operating systems is a set of locations where normal user processes run}, and is called a \texttt{M:1} threading model. \texttt{M:1} means running \texttt{M} user-threads on a single kernel-thread. These user-threads must cooperate on scheduling, as the scheduling is non-preemptive\footnote{Running task is executed until completion or yields}. Context switching and scheduling between these user-threads is happening unbeknownst to the OS, resulting in much faster context switch times. This does however mean the OS cannot help with scheduling, and blocking calls in any user-thread blocks all user-threads on the given kernel-thread. Only one user-thread can run on a kernel-thread at any time.
+
+
+\subsubsection{Kernel-Threading}
+
+Kernel-threads are often directly supported in OS kernels and is called a \texttt{1:1} threading model. \texttt{1:1} means scheduling each kernel-thread onto the available processors of the system. Kernel-threads often use preemptive scheduling\footnote{Tasks are given a priority, and the running task is interrupted and later resumed whenever a task with higher priority is ready}, which the OS is responsible for. Kernel-threads has no problems with blocking calls, as the OS can schedule any other kernel-thread during a blocking call. Since the OS has full control over the scheduling it can more better utilize the available resources and time usage for each thread, compared to user-threading. Context switching is however much slower than user-threads because of overhead and kernel-space\footnote{Regarding operating systems is the location where the code of the kernel is stored and executed} crossing.
+
+
+\subsubsection{Hybrid-Threading}
+
+Hybrid-threads is a combination of user-threads and kernel-threads, and is called a \texttt{M:N} threading model. \texttt{M:N} means running \texttt{M} user-threads on \texttt{N} kernel-threads. In other words, hybrid-threading runs multiple kernel-threads, with each kernel-thread running multiple user-threads. Blocking calls can still cause issues with unnecessarily blocking user-threads, but is possible to mitigate with running the blocking user-thread on its own kernel-thread. Scheduling the user-threads among the kernel-threads can be much more difficult compared to user-threading, as the OS cannot help with utilizing the available resources. 
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Concurrency Concepts and Primitives}
+\label{subsec:concurrency_concepts_primitives}
+
+Having multiple sequential executions running concurrently is not very useful if they cannot cooperate. Some form of interaction or communication between the computations, which in turn requires coordination of access to shared resources, must therefore be present. This coordination is called \textit{concurrency control}. Concurrency control means ensuring the correct and intended result from concurrent interactions are upheld. 
+
+To be able to manipulate shared resources safely requires introducing couple of new primitives and concepts. Below is a non-exhaustive list of concurrency primitives presented.
+
+
+\subsubsection{Atomic Operations}
+
+An operation is said to be \textit{atomic} or \textit{linearizable} if it appears to the rest of the system as instantaneous. In concurrent systems multiple processes can access the same shared resource at the same time. If one of the processes are changing the contents of a shared resource while another process is using the same resource, it is possible the operation results in an invalid or undefined state. It is obvious such situations requires atomic operations to force a linear sequence of well\hyp{}defined observable operations. 
+
+Atomic operations exists both as low level and high level primitives. At the bottom we have processor instructions which are used to manipulate memory atomically. These might include \textit{atomic read / write}, \textit{atomic swap}, \textit{test\hyp{}and\hyp{}set}, \textit{fetch\hyp{}and\hyp{}add}, \textit{compare\hyp{}and\hyp{}swap}, and \textit{load\hyp{}link / store\hyp{}conditional}. Modern processors usually support these types of instructions FIXME(CITE). Further, these instructions are used to implement higher level primitives such as locking and lock\hyp{}free and wait\hyp{}free algorithms. 
+
+
+\subsubsection{Critical Sections}
+
+Concurrent access to shared resources can result in an invalid or undefined state, as stated above. If more than one processes in a region where shared resources are accessed can cause erroneous behaviour, than such regions are called a \textit{critical sections} or \textit{critical regions}. These regions must therefore be protected by some sort of synchronization or lock mechanism. Critical sections usually accesses shared resources such as a data structure, IO operations or network socket, where multiple concurrent access would result in incorrect behaviour \citep{raynal2012concurrent}.
+
+Consider the following program: two processes, \texttt{A} and \texttt{B}, tries to increment the shared resource \texttt{count} by one. 
+
+\noindent\begin{minipage}{0.45\textwidth}
+\begin{lstlisting}[title={Process A},style={CustomC},frame={},xleftmargin={4em}]
+// Critical section
+count = count + 1
+\end{lstlisting}
+\end{minipage}
+\begin{minipage}{0.45\textwidth}
+\begin{lstlisting}[title={Process B},style={CustomC},frame={},xleftmargin={4em}]
+// Critical section
+count = count + 1
+\end{lstlisting}
+\end{minipage}
+
+If both process \texttt{A} and \texttt{B} are executing the critical section at the same time, it is possible for the \texttt{count} resource to only be incremented once, instead of the expected result twice. This comes from the fact to incrementing is not inherently an atomic operation, but a three\hyp{}stage operation of read\hyp{}modify\hyp{}write. 
+
+If process \texttt{A} starts executing the increment, but is preempted before the write stage, process \texttt{B} can theoretically complete an arbitrary amount of increment operations before process \texttt{A} is resumed again. When process \texttt{A} is resumed, the old modified value of \texttt{count} is now written back instead of the updated value. This is a classic example of a \textit{race condition}, meaning the order of which the operation is completed determines the outcome.
+
+To achieve correct behaviour the critical section must be protected, usually done through some form of mutual exclusion. This consequently makes the critical section an atomic operation, as the read\hyp{}modify\hyp{}write operation is made indivisible to the other process.
+
+
+\subsubsection{Semaphores}
+
+Semaphore is in software terms a data structure used to control access to a shared resource between multiple processes and to synchronize between processes. Invented by Edsger Dijkstra \citep{dijkstra}, and is one the simplest concurrency primitives used to build concurrency structures.
+
+As described in \citet[chapter 2]{downey2016}, a semaphore is like an integer with three differences:
+
+\begin{enumerate}[topsep=0em,itemsep=-1em,partopsep=0.5em,parsep=1em]
+    \item When you create the semaphore, you can initialize its value to any integer, but after that the only operations you are allowed to perform are increment (increase by one) and decrement (decrease by one). You cannot read the current value of the semaphore.
+    \item When a thread decrements the semaphore, if the result is negative, the thread blocks itself and cannot continue until another thread increments the semaphore.
+    \item When a thread increments the semaphore, if there are other threads waiting, one of the waiting threads gets unblocked.
+\end{enumerate}
+
+Blocking in this sense means the scheduler will suspend the blocking thread until a corresponding event or operation which causes the thread to be unblocked. 
+
+Both the increment and decrement operations are atomic, meaning multiple processes can concurrently access a semaphore.
+
+Semaphores usually comes in two flavours: \textit{counting semaphore} and \textit{binary semaphore}. A counting semaphore allows an arbitrary resource count, while a binary semaphore allows only resource count of $0$ and $1$ (hence binary). 
+
+Semaphores is incredibly simple by definition, and are therefore often used to create more complex concurrency synchronization and structures. This includes structures such as \textit{locks}, \textit{monitors} and other \textit{synchronization patterns}. See \citet[chap. 3-7]{downey2016} for a more complete overview of such constructs.
+
+
+\subsubsection{Mutual Exclusion (Mutex)}
+
+Mutual exclusion, \textit{mutex} for short, is necessary for protecting critical regions from concurrent access and to prevent race conditions. One can view mutexes as binary semaphores, with one important difference: mutexes has a notion of ownership. Only the process which is successful in acquiring the mutex can release it. 
+
+Looking back at the example in ``Critical Sections'', wrapping a mutex around the critical section hinders process \texttt{A} and \texttt{B} to increment \texttt{count} simultaneously, and effectively turns the increment operation into an atomic operation. 
+
+\noindent\begin{minipage}{0.45\textwidth}
+\begin{lstlisting}[title={Process A},style={CustomC},frame={},xleftmargin={4em}]
+mutex.wait()
+// Critical section
+count = count + 1
+mutex.signal()
+\end{lstlisting}
+\end{minipage}
+\begin{minipage}{0.45\textwidth}
+\begin{lstlisting}[title={Process B},style={CustomC},frame={},xleftmargin={4em}]
+mutex.wait()
+// Critical section
+count = count + 1
+mutex.signal()
+\end{lstlisting}
+\end{minipage}
+
+Note that using mutual exclusion is very error prone, and might have unwanted side\hyp{}effects and conditions such as deadlocks, starvation and priority inversion. This is explained in further detail in the next subsection.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Potential Problems}
+\label{subsec:potential_problems}
+
+As a consequence of using concurrency control, potential problems such as \textit{race conditions}, \textit{deadlocks}, \textit{livelocks}, \textit{starvation}, and \textit{priority inversion} must be taken into consideration. These are unwanted conditions or program states which are results of concurrent operations and interactions which resulted in an erroneous state.
+
+
+\subsubsection{Race Condition}
+
+As mentioned before, race condition is when the output of an operation is dependent on the timing and sequence of other processes. Race conditions is never an intended behaviour of a program, as it is deemed undefined behaviour. This comes from the fact that the result is of a race condition is the non\hyp{}deterministic result of timing between threads. 
+
+
+\subsubsection{Deadlock}
+
+Deadlocks is a state in which a group of processes are each waiting for other members of the same group to release a lock, effectively halting progression. This is a direct consequence of enforcing mutual exclusion in critical sections.
+
+As described in \citet[page 239]{silberschatz2006operating}, a deadlock can only occur in a system if and only if all four of the \textit{Coffman conditions}\citep[First described][page 70]{coffman1971system} are held simultaneously. The conditions are as follows:
+
+\begin{enumerate}[topsep=0em,itemsep=-1em,partopsep=0.5em,parsep=1em]
+    \item \textit{Mutual exclusion} -- the resources involved must be unshareable.
+    \item \textit{Hold and wait} -- a process holding at least one resource and requesting additional resources.
+    \item \textit{No preemption} -- a resource can only be voluntarily released by the process holding it.
+    \item \textit{Circular wait} -- each process must be waiting for a resource held by another process, which in turn is waiting for the first process to release the resource.
+\end{enumerate}
+
+There are several ways to handle deadlocks, but the three main approaches are \textit{ignoring}, \textit{detection} and \textit{prevention}. Ignoring is simply to assume a deadlock never occurs. Detection allows deadlocks to occur. If a deadlock is detected, the deadlock symmetry is broken by either terminating one or more of the deadlocked processes, or involuntarily preempt one or more of the deadlocked resources. Prevention is to simply prevent one of the four Coffman conditions from ever occurring.
+
+
+\subsubsection{Livelock}
+
+Livelocks is similar to deadlock, as it is a state in which processes are not blocked, but are refrained from making progression. This can occur when processes are to busy responding to each other to resume work. 
+
+Livelock is a rarer condition than deadlock, and can be harder to detect as the processes are not blocked when livelocked. 
+
+
+\subsubsection{Starvation}
+
+Starvation is a condition where a process is denied further progress by perpetually denied access to required resources or denied running time by higher priority processes. 
+
+The absence of starvation in concurrent algorithms is called liveness, which is a property guaranteeing all processes being able to make progress in finite time. 
+
+
+\subsubsection{Priority Inversion}
+
+Priority inversion is a situation in scheduling where a higher priority process is indirectly preempted by a lower priority process, usually because of mutual exclusion. 
+
+Consider the following example: process \texttt{H}, \texttt{M} and \texttt{L} has the priority ordering \texttt{p(H) > p(M) > p(L)}, and \texttt{H} and \texttt{L} both try to acquire the resource \texttt{R}. If \texttt{L} acquires the resource and is promptly preempted by \texttt{H}, \texttt{H} becomes blocked until \texttt{L} releases the resource. It is now possible for \texttt{M} to run over \texttt{L}, because of higher priority. Effectively \texttt{H} cannot run as \texttt{L} cannot release the resource, since \texttt{M} is preempting \texttt{L}. This is called \textit{priority inversion}.
+
+\textit{Bounded priority inversion} is when it can be proven priority inversion only occurs for a finite amount of time, while \textit{unbounded priority inversion} cannot prove this. 
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Communicating Sequential Processes}
+% what is CSP
+% programming languages
+% libraries
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Multicore Architectures}
+%caches
+%parallelism
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Non-blocking Algorithms}
 % wait-free and lock-free programming
+
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Memory Ordering}
 % relaxed, acquire, release, seq_cst
+
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Dynamic Multithreading}
 % work stealing and work sharing
+
+
+
+
