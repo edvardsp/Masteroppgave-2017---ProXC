@@ -25,6 +25,9 @@ The notion of concurrency stems from the limitations of sequential programs and 
 
 It is important to note that concurrent programming is not the same as parallel programming. Concurrency is a form of abstraction, disregarding how the actual program execution is achieved. Parallelism refers to, in contrast to concurrency, the condition of a program being executed on multiple processors at once. One could therefore say that concurrency is possible on both uniprocessors and multiprocessors, while parallelism is only possible on multiprocessors.
 
+Concurrency is a great tool for programmers, allowing expressing concurrent systems in a much more intuitive manner. It does however introduce a much greater mental overhead for the programmer, and is much more error prone compared to other types of programming paradigms. As a result, concurrent programming may not be as easy to invest time in. FIXME
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Threading Models}
 \label{subsec:threading_models}
@@ -166,7 +169,7 @@ There are several ways to handle deadlocks, but the three main approaches are \t
 
 \subsubsection{Livelock}
 
-Livelocks is similar to deadlock, as it is a state in which processes are not blocked, but are refrained from making progression. This can occur when processes are to busy responding to each other to resume work. 
+Livelock is similar to deadlock, as it is a state in which processes are not blocked, but are refrained from making progression. This can occur when processes are to busy responding to each other to resume work. 
 
 Livelock is a rarer condition than deadlock, and can be harder to detect as the processes are not blocked when livelocked. 
 
@@ -175,7 +178,7 @@ Livelock is a rarer condition than deadlock, and can be harder to detect as the 
 
 Starvation is a condition where a process is denied further progress by perpetually denied access to required resources or denied running time by higher priority processes. 
 
-The absence of starvation in concurrent algorithms is called liveness, which is a property guaranteeing all processes being able to make progress in finite time. 
+The absence of starvation in concurrent algorithms is called \textit{liveness}, which is a property guaranteeing all processes being able to make progress within finite time. 
 
 
 \subsubsection{Priority Inversion}
@@ -190,39 +193,57 @@ Consider the following example: process \texttt{H}, \texttt{M} and \texttt{L} ha
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Communicating Sequential Processes}
+\label{sec:csp}
 % what is CSP
 % programming languages
 % libraries
 
+\textit{Communicating sequential processes} (CSP) is a mathematical formal language used in computer science to describe and model concurrent systems. First introduced by \citet{hoare1978communicating}, and was originally described as parallel composition of sequential disjoint processes with primitives for input and output, combined with guarded commands \citep{dijkstra1975guarded}. Communication was solely through message\hyp{}passing, which permitted synchronized communication between named processes.
 
+Since its inception, CSP has undergone numerous transformations. As \citet{abdallah2005communicating} explains, most of the subsequent research has focused on a process algebra known as \textit{Theoretical CSP} (TCSP), which suppresses the imperative aspect of CSP \citep{brookes1984theory}. 
+
+The strong points of CSP and TCSP is the ability to reason about correctness of the system being modeled. Since all communication between processes are limited to message\hyp{}passing, no primitive race conditions can occur. Further on, properties of the CSP models can be reasoned about, such as liveness, safety and deadlock. 
+
+In the industry, CSP is used to specify and verify the correctness of concurrent systems, especially communication and security protocols. The most prominent tool used is the \textit{failure\hyp{}divergence refinement} (FDR) checker \citep{manual2000failures}. FDR can statically prove if a concurrent system refines a given specification, has the correct liveness and safety properties, as well as absence of deadlocks and divergence. It is obvious such tools are powerful for systems that must prove its correctness before being deployed.
+
+The ideas and expressiveness of CSP models has influenced the creation of concurrent programming languages, most notable occam \citep{inmos1988occam}, Ada \citep{ledgard1983reference}, XC \citep{douglas2009programming} and Go \citep{go2009go}. CSP frameworks has also been developed for programming languages which does not natively support CSP influenced concurrency, such as ProXC \citep{pettersen2016proxc} for C, C++CSP2 \citep{brown2007c++csp2} and CPPCSP \citep{chalmers2016cppcsp} for C++, JCSP \citep{welch2007jcsp} for Java, PyCSP \citep{bjorndalen2007pycsp} for Python, and much more.
+
+It is understandable CSP is a great tool for concurrent systems. It provides a strong and safe framework for modelling and implementation, and allowing to prove the correctness of an implementation. This alleviates some of the mental overhead, as well as reducing the error prone nature of concurrent programming. 
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Multicore Architectures}
+\label{sec:multicore_architectures}
 %caches
 %parallelism
 
 
 
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Non-blocking Algorithms}
-% wait-free and lock-free programming
-
-
-
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Memory Ordering}
+\section{Memory Models and Ordering}
+\label{sec:memory_ordering}
 % relaxed, acquire, release, seq_cst
 
 
 
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Non\hyp{}blocking Algorithms}
+\label{sec:nonblocking_algorithms}
+% wait-free and lock-free programming
+
+To fully utilize multiprocessors, most programs are multiprogrammed. Preemptive multiprocessor operating systems has the unfortunate effect of degrading performance in synchronized parallel programs if the preemption is ill\hyp{}timed, and access to shared data structures is usually the root of the cause. As \citet{michael1998nonblocking} explains, these data structures needs to ensure concurrent access is consistent and well\hyp{}formed across processes, which is usually implemented by protecting critical sections with mutual exclusion. Mutual exclusion locks does not scale well in performance on time\hyp{}sliced multiprogrammed systems \citep{zahorjan1991effect} due to preemption of processes holding locks. The preempted process must be rescheduled and release the lock before any waiting processes can progress.
+
+One principal strategy to mitigate ill\hyp{}timed preemption are \textit{non\hyp{}blocking algorithms}. Non\hyp{}blocking algorithms has the property any process cannot cause failure nor suspension of any other process, despite failures or suspension of itself. Two types of guarantees are usually associated with nonblocking algorithms to describe how strong this property is: \textit{lock\hyp{}free} and \textit{wait\hyp{}free}. 
+
+Lock\hyp{}freedom guarantees system\hyp{}wide progress, and can be defined as: given a meaningful definition of progress, an algorithm is lock\hyp{}free if at least one process in a program makes progress if all processes are given sufficient running time. Wait\hyp{}freedom guarantees process\hyp{}wide progress, and can be defined as: an algorithm is wait\hyp{}free if every operation in the algorithm has an upper bound of computational time before it completes. Wait\hyp{}freedom implies lock\hyp{}freedom, which makes wait\hyp{}freedom a stronger guarantee than lock\hyp{}freedom.
+
+The general methodology to designing lock\hyp{}free algorithms is using the atomic primitives \textit{compare\hyp{}and\hyp{}swap} or \textit{load\hyp{}linked / store\hyp{}conditional}. 
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Dynamic Multithreading}
+\label{sec:dynamic_multithreading}
 % work stealing and work sharing
 
 
