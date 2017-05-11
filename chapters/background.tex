@@ -220,32 +220,46 @@ It is understandable CSP is a great tool for concurrent systems. It provides a s
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Memory Models and Ordering}
+\section{Memory Ordering}
 \label{sec:memory_ordering}
+% weak vs. strong
 % relaxed, acquire, release, seq_cst
 
+Out of all CPU operations, memory accesses are among the slowest. Following Moore's law, CPU instruction performance has increased at a much greater rate than memory performance. Use of multilevel caches has been used to a great extent to bridge this gap in performance, however utilization of said caches could be improved. This is where \textit{memory reordering} comes in. To increase the performance of memory access further and properly utilize the hardware parallelism, memory operations can complete out of order \citep{mckenney2007memory}.
 
+Several types of memory\hyp{}consistency models exist. \textit{Sequential consistency} is a guarantee that all processes agree on the order memory operations occur, even if they are completed out of order. The easiest configuration for sequential consistency is running all processes on a single core or a uniprocessor architecture. On multicore or multiprocessor architectures however, memory reordering can create inconsistencies between processes and proper care must therefore be taken to enforce correct memory ordering. 
+
+There are different types of memory reordering, which usually falls into the categories of \textit{compiler reordering} and \textit{processor reordering}. As the name implies, compiler reordering is memory reordering done by the compiler at compile time, while processor reordering is memory reordering done by the processor at runtime.
+
+Compiler reordering is obviously different from compiler to compiler, as it is implementation defined for each compiler. Processor reordering is also surprisingly different from CPU to CPU architecture. A \textit{memory model} is therefore used to describe what types of memory ordering to expect at runtime for a given processor, which again falls into the two categories \textit{weak} and \textit{strong} memory models.
+
+As \citet{preshing2012weakstrong} explains it, a weak memory model can expect all types of memory reordering. This means any load or store operation can be reordered with any other load or store operation, and can reordered by both the compiler or processor. In contrast, a strong memory model limits the types of memory reordering. More specifically, only \texttt{store\hyp{}load} reordering is permitted. 
+
+To enforce correct memory ordering, some type of \textit{memory barrier} must be used \citep{preshing2012barriers,preshing2012lockfree}. These exists as both software and hardware semantics, and are generally implemented as some sort of \textit{acquire} and \textit{release} semantics \citep{preshing2012acquire}.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Non\hyp{}blocking Algorithms}
+\section{Non\hyp{}Blocking Algorithms}
 \label{sec:nonblocking_algorithms}
 % wait-free and lock-free programming
 
 To fully utilize multiprocessors, most programs are multiprogrammed. Preemptive multiprocessor operating systems has the unfortunate effect of degrading performance in synchronized parallel programs if the preemption is ill\hyp{}timed, and access to shared data structures is usually the root of the cause. As \citet{michael1998nonblocking} explains, these data structures needs to ensure concurrent access is consistent and well\hyp{}formed across processes, which is usually implemented by protecting critical sections with mutual exclusion. Mutual exclusion locks does not scale well in performance on time\hyp{}sliced multiprogrammed systems \citep{zahorjan1991effect} due to preemption of processes holding locks. The preempted process must be rescheduled and release the lock before any waiting processes can progress.
 
-One principal strategy to mitigate ill\hyp{}timed preemption are \textit{non\hyp{}blocking algorithms}. Non\hyp{}blocking algorithms has the property any process cannot cause failure nor suspension of any other process, despite failures or suspension of itself. Two types of guarantees are usually associated with nonblocking algorithms to describe how strong this property is: \textit{lock\hyp{}free} and \textit{wait\hyp{}free}. 
+One principal strategy to mitigate ill\hyp{}timed preemptions are \textit{non\hyp{}blocking algorithms}. Non\hyp{}blocking algorithms has the property any process cannot cause failure nor suspension of any other process, despite failures or suspension of itself. Two types of guarantees are usually associated with nonblocking algorithms to describe how strong this property is: \textit{lock\hyp{}free} and \textit{wait\hyp{}free}. 
 
 Lock\hyp{}freedom guarantees system\hyp{}wide progress, and can be defined as: given a meaningful definition of progress, an algorithm is lock\hyp{}free if at least one process in a program makes progress if all processes are given sufficient running time. Wait\hyp{}freedom guarantees process\hyp{}wide progress, and can be defined as: an algorithm is wait\hyp{}free if every operation in the algorithm has an upper bound of computational time before it completes. Wait\hyp{}freedom implies lock\hyp{}freedom, which makes wait\hyp{}freedom a stronger guarantee than lock\hyp{}freedom.
 
-The general methodology to designing lock\hyp{}free algorithms is using the atomic primitives \textit{compare\hyp{}and\hyp{}swap} or \textit{load\hyp{}linked / store\hyp{}conditional}. 
+\citet{preshing2012lockfree} describes the \textit{lock} part of non\hyp{}blocking algorithms (or as lock\hyp{}free programming he refers it to) as ``the possibility of "locking up" the entire application in some way, wheth\-er it's deadlock, livelock -- or even due to hypothetical thread scheduling decisions made by your worst enemy''. This means code not containing locks, such as mutexes, may still be not lock\hyp{}free. 
+
+It is rare a concurrent program is entirely lock\hyp{}free or wait\hyp{}free, which is why the focus is on non\hyp{}blocking algorithms rather than non\hyp{}blocking programs. Generally, a set of high contention operations in programs are set out to be non\hyp{}blocking, such as access and manipulation to shared data structures.
+
+A handful of techniques are used to implement non\hyp{}blocking algorithms, most commonly a combination of atomic operations, memory barriers and general patterns. While the atomic primitives \texttt{read\hyp{}modify\hyp{}write} and \texttt{compare\hyp{}and\hyp{}swap} forms the basis of most non\hyp{}blocking algorithms, memory models and memory ordering needs to be taken into consideration as well. Since different processors have different memory models, it is not given processes agree on the order in which memory operations occur. Memory reordering can cause memory inconsistencies between processes, which is why sequential consistency or memory barriers are needed, especially on multicore architectures \citep{preshing2012weakstrong,preshing2012barriers,preshing2012lockfree,preshing2012acquire}.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Dynamic Multithreading}
 \label{sec:dynamic_multithreading}
 % work stealing and work sharing
-
 
 
 
