@@ -217,6 +217,7 @@ It is understandable CSP is a great tool for concurrent systems. It provides a s
 %caches
 %parallelism
 
+FIXME, necessary to write about this?
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -249,7 +250,7 @@ One principal strategy to mitigate ill\hyp{}timed preemptions are \textit{non\hy
 
 Lock\hyp{}freedom guarantees system\hyp{}wide progress, and can be defined as: given a meaningful definition of progress, an algorithm is lock\hyp{}free if at least one process in a program makes progress if all processes are given sufficient running time. Wait\hyp{}freedom guarantees process\hyp{}wide progress, and can be defined as: an algorithm is wait\hyp{}free if every operation in the algorithm has an upper bound of computational time before it completes. Wait\hyp{}freedom implies lock\hyp{}freedom, which makes wait\hyp{}freedom a stronger guarantee than lock\hyp{}freedom.
 
-\citet{preshing2012lockfree} describes the \textit{lock} part of non\hyp{}blocking algorithms (or as lock\hyp{}free programming he refers it to) as ``the possibility of "locking up" the entire application in some way, wheth\-er it's deadlock, livelock -- or even due to hypothetical thread scheduling decisions made by your worst enemy''. This means code not containing locks, such as mutexes, may still be not lock\hyp{}free. 
+\citet{preshing2012lockfree} describes the \textit{lock} part of non\hyp{}blocking algorithms (or as lock\hyp{}free programming he refers it to) as ``the possibility of "locking up" the entire application in some way, wheth\-er it's deadlock, livelock -- or even due to hypothetical thread scheduling decisions made by your worst enemy''. This means code not containing locks, such as mutexes, may still not be lock\hyp{}free. 
 
 It is rare a concurrent program is entirely lock\hyp{}free or wait\hyp{}free, which is why the focus is on non\hyp{}blocking algorithms rather than non\hyp{}blocking programs. Generally, a set of high contention operations in programs are set out to be non\hyp{}blocking, such as access and manipulation to shared data structures.
 
@@ -261,5 +262,35 @@ A handful of techniques are used to implement non\hyp{}blocking algorithms, most
 \label{sec:dynamic_multithreading}
 % work stealing and work sharing
 
+Getting the potential performance out of multicore processors requires fully utilizing the available cores. Amdahl's law \citep{amdahl1967validity} argues that the maximum potential speedup in a program with infinite number of parallel processors is limited to $^1/_s$, given the fraction of sequential work in the program is $s$. Because of Ahmdal's law, multiprogrammed concurrent programs needs to identify the potential parallelism and convert sequential work into parallel work to exploit multicore performance. This responsibility is mostly up to the programmer to identify, and in most cases is easier said than done. Simple constructs such as loops and loosely coupled sections are easy to detect and convert \citep{dagum1998openmp,robison2013composable}, but a program\hyp{}wide parallelism is far from intuitive to detect and how to schedule such parallelism effectively on multicore processors. 
 
+\textit{Dynamic multithreading} is a strategy to abstract away the scheduling and instead focus on detecting the units of parallel work in the program. The idea is letting the program create, synchronize and schedule new processes or tasks which executes some kind of computation. 
+
+Based on the threading models (see Section \ref{subsec:threading_models}) the naïve approach is spawning kernel\hyp{}threads for each process. The operating system is responsible for creating, scheduling and destroying the processes, as well as scheduling the processes among the available cores. However, kernel\hyp{}threads are expensive to create, context switching between kernel\hyp{}threads are relative slow, and scales very badly in performance with an increase in kernel\hyp{}threads running simultaneously. This severely limits the use of processes, and makes it very unintuitive on how to distribute the parallel work efficiently.
+
+Using hybrid\hyp{}threads, a combination of user\hyp{}threads running on multiple kernel\hyp{}threads, is an improvement on only kernel\hyp{}threads. Each spawned process is a user\hyp{}thread, scheduled on a static number of kernel\hyp{}threads equal to the number of available cores. User\hyp{}threads are much cheaper to create, context switching is relatively much faster, and scales performance wise much better. The problem is how to efficiently schedule and distribute these processes between the available kernel\hyp{}threads, since an intermediate runtime environment has to exist between the user\hyp{}threads and the operating system.
+
+Two principal scheduling strategies exist to efficiently distribute and schedule processes among a static number of kernel\hyp{}threads, namely \textit{work stealing} and \textit{work sharing}.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Work Stealing}
+\label{subsec:work_stealing}
+
+Given a processor with $P$ cores, $P$ kernel\hyp{}threads are created with each running a scheduler. Each scheduler has a pool of ready work. Whenever a schedule runs out of ready work, it selects another scheduler (called victim) and tries to steal work. If the steal was successful, it continues the stolen work. Spawning processes simply pushes the spawned process in the ready pool \citep{blumofe1999scheduling}.
+
+Different types of work stealing algorithms exist, but the main emphasis is on the victim selection and stealing procedure. The most popular algorithm is the randomized work stealing algorithm first detailed in \citet{blumofe1999scheduling}. Whenever a scheduler is empty for ready work, a victim is chosen uniformly at random. If the victims ready pool is not empty, try to steal work. If successful, resume said work, else start over the selection procedure.
+
+The most common way to represent ready work is by using a double\hyp{}ended queue, or \textit{deque} for short, where the ends of the deque is called \textit{top} and \textit{bottom}. The scheduler owning the deque has access to the bottom of the deque, where it can push and pop ready work. Any other schedulers can try to steal from the top of the deque if it is non\hyp{}empty. Much research has gone into creating these deques as efficient and low overhead as possible \citep{chase2005dynamic,le2013correct}, as they can be high contention area between kernel\hyp{}threads.
+
+Many runtime frameworks for dynamic parallel computations has been created with work stealing \citep{blumofe1996cilk,sunderam1990pvm}, and with great success performance wise.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Work Sharing}
+\label{subsec:work_sharing}
+
+As the same setup as work stealing, $P$ kernel\hyp{}threads are created on a processor with $P$ cores with each running a scheduler. The big contrast to work stealing is work sharing manually distributes each work among the schedulers whenever new work is spawned. 
+
+Usually work stealing is preferred over work sharing, as work stealing causes less process migration between schedulers. As \citet[page 721]{blumofe1999scheduling} argues, ``Intuitively, the migration of threads occurs less frequently with work stealing than with work sharing, since when all processors have work to do, no threads are migrated by a work stealing scheduler, but threads are always migrated by a work sharing scheduler''.
 
