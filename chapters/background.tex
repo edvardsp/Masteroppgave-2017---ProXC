@@ -51,8 +51,8 @@ Hybrid-threads is a combination of user-threads and kernel-threads, and is calle
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Concurrency Concepts and Primitives}
-\label{subsec:concurrency_concepts_primitives}
+\subsection{Concepts and Primitives}
+\label{subsec:concepts_primitives}
 
 Having multiple sequential executions running concurrently is not very useful if they cannot cooperate. Some form of interaction or communication between the computations, which in turn requires coordination of access to shared resources, must therefore be present. This coordination is called \textit{concurrency control}. Concurrency control means ensuring the correct and intended result from concurrent interactions are upheld. 
 
@@ -266,7 +266,7 @@ Getting the potential performance out of multicore processors requires fully uti
 
 \textit{Dynamic multithreading} is a strategy to abstract away the scheduling and instead focus on detecting the units of parallel work in the program. The idea is letting the program create, synchronize and schedule new processes or tasks which executes some kind of computation. 
 
-Based on the threading models (see Section \ref{subsec:threading_models}) the naïve approach is spawning kernel\hyp{}threads for each process. The operating system is responsible for creating, scheduling and destroying the processes, as well as scheduling the processes among the available cores. However, kernel\hyp{}threads are expensive to create, context switching between kernel\hyp{}threads are relative slow, and scales very badly in performance with an increase in kernel\hyp{}threads running simultaneously. This severely limits the use of processes, and makes it very unintuitive on how to distribute the parallel work efficiently.
+Based on the threading models (see \cref{subsec:threading_models}) the naïve approach is spawning kernel\hyp{}threads for each process. The operating system is responsible for creating, scheduling and destroying the processes, as well as scheduling the processes among the available cores. However, kernel\hyp{}threads are expensive to create, context switching between kernel\hyp{}threads are relative slow, and scales very badly in performance with an increase in kernel\hyp{}threads running simultaneously. This severely limits the use of processes, and makes it very unintuitive on how to distribute the parallel work efficiently.
 
 Using hybrid\hyp{}threads, a combination of user\hyp{}threads running on multiple kernel\hyp{}threads, is an improvement on only kernel\hyp{}threads. Each spawned process is a user\hyp{}thread, scheduled on a static number of kernel\hyp{}threads equal to the number of available cores. User\hyp{}threads are much cheaper to create, context switching is relatively much faster, and scales performance wise much better. The problem is how to efficiently schedule and distribute these processes between the available kernel\hyp{}threads, since an intermediate runtime environment has to exist between the user\hyp{}threads and the operating system.
 

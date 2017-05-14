@@ -3,15 +3,55 @@
 % !TEX spellcheck = en-US
 %%=========================================
 
-\chapter{ProXC 2.0 - The Library}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{ProXC++ -- The Library}
 \label{ch:proxc_library}
 
+This chapter introduces the library developed for this thesis. Details regarding design and implementation are presented in \cref{ch:design_implementation}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Library Overview}
 % API
 % features
 
-\section{System Overview}
+ProXC++ (pronounced ``proxy plus plus'') is a CSP\hyp{}influenced concurrency library for modern C++, specifically aimed at dynamic multithreading for multiprogrammed parallel programs. Modern C++ in this regard meaning support for C++14 standard and later. The central ambition of ProXC++ is to provide expressive and safe concurrency to C++ programs which fully and effectively utilizes available computational resources on multicore architectures.
 
-%\section{Design and Implementation}
+ProXC++ is a runtime system using a hybrid threading model. Work stealing is employed for load balancing between the schedulers, each running on an available logical core. 
 
+Available concurrency primitives in ProXC++ are \textit{fork\hyp{}and\hyp{}join} parallelism, strict message\hyp{}passing, simultaneous event handling, and soft real\hyp{}time requirements.
+
+The name ``ProXC++'' is a continuation of the original library ProXC \citep{pettersen2016proxc}, where ProXC++ targets C++ in contrast to ProXC targeting C. Since ProXC++ aimed to be an improvement over ProXC, the ``\textit{plus plus}'' could also be viewed as an ``\textit{incremental better}'' library. This is of course only intended to be humorous, as I personally like ``\textit{plus plus}'' better than slapping a ``2'' at the end of the name.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Library Features}
+
+The complete set of features in ProXC++ is as follows:
+
+\begin{itemize}[topsep=0em,itemsep=-1em,partopsep=0.5em,parsep=1em]
+    \item Multicore support
+    \item Lightweight processes / threads
+    \item Unidirectional, type\hyp{}safe, one\hyp{}to\hyp{}one synchronous channels
+    \item Parallel; fork\hyp{}and\hyp{}join parallelism on a set of processes
+    \item Replicators for parallel, generating dynamic number of parallel processes
+    \item Alternation; choice over multiple alternatives
+    \item Alternatives of types channel read, channel write, and timeouts on timers
+    \item Alternatives guarded on a boolean value
+    \item Replicators for alternation, generating dynamic number of choices
+    \item Timers; types of relative, repeating, and absolute timeouts
+    \item Soft real\hyp{}time requirements for process suspension, channel operations, and alternation operations
+\end{itemize}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Target Platforms}
+
+ProXC++ is mainly targeted for desktop environments, especially multicore architectures. However, it should support all platforms that has access to a C++14 compliant compiler and the Boost C++ libraries \citep{boost2017boost} as well as the Boost Context library \citep{kowalke2017boost} (as Boost is portable). ``\textit{Should}'' is used here, because ProXC++ is only tested on 64\hyp{}bit x86 Linux platform as of writing this thesis.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Dependencies}
+
+ProXC++ uses a handful header\hyp{}only libraries from the Boost C++ libraries \citep{boost2017boost}, and the compiled library Boost Context \citep{kowalke2017boost} for portable and fast context switching between execution contexts. Boost Context is used as a foundation of the user\hyp{}thread implementation. As of why not rolling with a handwritten implementation of context switching, compared to ProXC, is with the simple reason of Boost Context being portable out of the box and writing context switching library is not the focus of this thesis.
+
