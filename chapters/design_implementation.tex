@@ -16,6 +16,7 @@ Note that the focus of this design and implementation is dynamic multithreading 
 The library is written in C++, with standard C++14 dialect. The reader is expected to have a fair understanding of C++, and being familiar with standard C++11 dialect or newer is recommended. Detailed explanations of the C++ programming language is not presented here. Refer to any C++ reference (e.g. \citet{stroustrup2013c++}) for more details.
 
 
+\FloatBarrier
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Data Structures}
 % intrusive containers
@@ -74,7 +75,15 @@ Contexts are implemented using the Boost Context library \citep{kowalke2017boost
 
 The context data structure is represented as a class, containing an execution context as well as a collection of flags, intrusive hooks, a wait queue, and a spinlock. The context class only acts as an information container for a given user\hyp{}thread, as most of the functionality of the context is implemented by the scheduler.
 
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.6\linewidth]{fig/context_states}
+    \caption{Finite state machine of context states and transitions.}
+    \label{fig:runtime_overview}
+\end{figure}
 
+
+\FloatBarrier
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Processes}
 \label{subsec:processes}
@@ -85,7 +94,10 @@ The process is no more than an opaque type to a context. The programmer implicit
 
 Processes can be dynamically generated, either through explicitly creating a dynamic collection of processes or through use of replicators.
 
+% Talk more about single processes and replicated processes, how they are defiend, how they work etc.
 
+
+\FloatBarrier
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Scheduler}
 \label{subsec:scheduler}
@@ -93,28 +105,198 @@ Processes can be dynamically generated, either through explicitly creating a dyn
 % process create, schedule, join, destroy
 % process timeouts
 
-The scheduler is the corner piece of runtime system. It has the sole responsibility of managing the different contexts, including creating, scheduling, destroying contexts. The scheduler runs as its own context, running in an scheduler loop until the program exits. Each spawned kernel\hyp{}thread contains a scheduler context, and the scheduler context never migrates to an another kernel\hyp{}thread. Each scheduler is the ``owner'' of one or more process contexts. ``Owning'' a context is synonymous with management, involving scheduling, inter\hyp{}process handling, and destroying the context when exited. When a process is created, the scheduler residing on the same kernel\hyp{}thread ``owns'' that context. Only one scheduler can ``own'' a context at a time.
+The scheduler is the corner piece of runtime system. It has the sole responsibility of managing the different contexts, including creating, scheduling, and destroying contexts. The scheduler runs as its own context, running in an scheduler loop until the program exits. Each spawned kernel\hyp{}thread contains a scheduler context, and the scheduler context never migrates to an another kernel\hyp{}thread. Each scheduler is the ``owner'' of one or more process contexts. ``Owning'' a context is synonymous with management; scheduling, inter\hyp{}process handling, and destroying the context when the corresponding process terminates. When a process is created, the scheduler residing on the same kernel\hyp{}thread ``owns'' that context. Only one scheduler can ``own'' a context at a time.
 
-Each scheduler contains four queues, namely a work, sleep, terminated, and remote queue. The work, sleep and terminated queue is managed only by a single scheduler, and is used to organize the processes the scheduler ``owns''. The work and terminated queues are intrusive doubly linked lists, while the sleep queue is a sorted, intrusive multiset. The work queue is the total list of all processes the scheduler ``own''. The sleep queue contains all process which are suspended with a given timeout, and are sorted in ascending order. The terminated queue is the queue of all processes which has terminated. The need for this queue will be explained later. 
-
-The remote queue is a concurrent MPSC queue, where the managing scheduler is the consumer while any other schedulers are the producer. Whenever a scheduler readies a context and it does not ``own'' it, the context is placed in the remote queue to the ``owning'' scheduler. The ``owning'' scheduler transitions contexts in the remote queue to the ready queue. In essence, the remote queue is used to signal schedulers when their contexts are readied, since remote schedulers cannot safely access the ready queue.
+A scheduler consists of context queues, scheduler functionality, and a scheduler context running an event loop.
 
 
+\FloatBarrier
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{Context Queues}
+
+Each scheduler has five queues: \textit{ready}, \textit{work}, \textit{sleep}, \textit{terminated}, and \textit{remote} queue. The ready queue holds the set of contexts ready to be scheduled, and is explained in more detail later. The work, sleep and terminated queue is managed only by a single scheduler, and is used to organize the processes the scheduler ``owns''. The work and terminated queues are intrusive doubly linked lists, while the sleep queue is a sorted, intrusive multiset\footnote{A multiset is an associative container that contains a set of objects, which allows multiple keys with the same values.}. The work queue is the total list of all processes the scheduler ``own''. The sleep queue contains all process which are suspended with a given timeout, and are sorted in ascending order. The terminated queue is the queue of all processes which has terminated. The need for this queue will be explained later. 
+
+The remote queue is a concurrent MPSC queue, where the managing scheduler is the consumer while any other schedulers are the producers. Whenever a scheduler readies a context and it does not ``own'' it, the context is placed in the remote queue to the ``owning'' scheduler. The ``owning'' scheduler transitions contexts in the remote queue to the ready queue. In essence, the remote queue is used to signal schedulers when their contexts are readied, since remote schedulers cannot safely access the ready queue.
+
+Now, back to the ready queue. The ready queue, as mentioned above, contains all contexts ready to be scheduled for a given scheduler. Only contexts the scheduler ``owns'' can be enlisted to the ready queue. From the schedulers point of view, the ready queue is a black box. Readied contexts are enqueued to the ready queue, and ready contexts are dequeued when scheduling a new context. How the contexts are stored internally and the policy of what order the contexts are dequeued is determined by the \textit{scheduling policy}. The default scheduling policy in ProXC++ is work stealing, however any other kind of policy could be implemented, such as work sharing and round robin.
+
+The work stealing scheduling policy is implemented as a concurrent double\hyp{}ended SPMC queue, using the design presented in \citet{chase2005dynamic,le2013correct} for efficient non\hyp{}blocking work stealing. The managing scheduler is the producer, while all schedulers are the consumers. The ready queue is responsible for load balancing work between the schedulers. From a schedulers point of view, it cannot tell if a dequeued ready context was stolen or not. It also cannot tell if other ready queues steals from its own ready queue. 
 
 
+\FloatBarrier
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{Scheduler Functionality}
+% framework
+% context switch data
+% context launch
+% context joining
+% context wait
+% context 
+
+Maybe the most important part of the scheduler is context management. The scheduler is responsible for creating new and destroying finished contexts, and 
+
+
+\FloatBarrier
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{Scheduler Event Loop}
+
+The scheduler event loop is the where the entirety of the scheduler context's lifetime executes in. The event loop consists of the following: check of exit flag, context cleanup, context transitions, and context scheduling. See \cref{lst:scheduler_event_loop} for pseudo code reference.
+
+\begin{lstfloat}
+\begin{lstlisting}[caption={Scheduler event loop pseudo code.}, label={lst:scheduler_event_loop}, style={CustomC}, xleftmargin={4em}]
+void scheduler_event_loop() {
+    while ( true ) {
+        // check exit flag and break if all workers have finished
+        if ( exit_flag ) {
+            scheduling_policy.notify();
+            if ( work_queue.empty() ) {
+                break;
+            }
+        }
+        // cleanup terminated contexts
+        cleanup_terminated();
+        // transition contexts to ready
+        transition_remote(); // remote -> ready
+        wakeup_sleep();      // sleep  -> ready
+        // schedule ready context if any else wait
+        context = scheduling_policy.dequeue();
+        if ( context != nullptr ) {
+            // scheduler must always be available
+            scheduling_policy.enqueue( scheduler_context );
+            // context switch to ready context
+            resume( context );
+            // scheduler is now running
+        } else {
+            // sleep until first sleeping context timeout
+            // or wait until notified
+            time_point = ( sleep_queue.empty() )
+                ? time_point_max
+                : sleep_queue.first() ;
+            scheduling_policy.suspend_until( time_point );
+        }
+    }
+    // scheduler is exiting, cleanup scheduler
+    scheduler_cleanup();
+    // lastly, context switch to main
+    resume( main_context );
+}
+\end{lstlisting}
+\end{lstfloat}
+
+
+
+
+
+\FloatBarrier
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Parallel}
+\section{Parallel Statement}
+\label{sec:parallel_statement}
+
+Processes can spawn new processes in parallel with the \textit{parallel} statement. The parallel statement takes one or more processes, either as single process statements or process replicators, and spawns and runs these processes in parallel. The spawned processes runs concurrently with any other processes currently running in the program. The parallel statement is the only way to spawn new processes with ProXC++.
+
+The parallel statement follows the fork\hyp{}join model \citep[page 88]{mccool2012structured}, where a sequential execution branches off at a designated point into parallel work, and subsequently joins/merges at another designated point and resumes the original sequential execution. \Cref{fig:fork_join_model} gives a simple illustration of the fork\hyp{}join model.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.6\linewidth]{fig/fork_join}
+    \caption{A parent process spawns $N$ parallel processes following the fork\hyp{}join model.}
+    \label{fig:fork_join_model}
+\end{figure}
+
+The process calling the parallel statement is the parent process. When calling the parallel statement, the parent process is suspended until all processes within the parallel statement has spawned, executed and terminated. When all parallel processes has terminated, the parent process resumes execution. 
+
+The processes to be executed in parallel can be defined in two ways: either as a single process or as a replicated process. See \cref{subsec:processes} for a more detailed explanation of processes. 
 
 
+\FloatBarrier
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Parallel Implementation}
+\label{subsec:parallel_implementation}
 
+All relevant code for the parallel statement implementation can be found in the following files \texttt{parallel.hpp} and \texttt{process.hpp}.
+
+The parallel statement has two obvious phases: the fork and join phases. 
+
+During the fork phase, each process to be executed in parallel is spawned by the parent process, one by one. This involves creating the process, attaching the process to the current scheduler, and launching the process. Launching the process simply enqueues the process to the ready queue of the current scheduler. When all parallel process has been spawned, the parent process enters the join phase.
+
+The join phase consists of the parent process joining all parallel processes, one by one. Joining a process, which is an atomic operation, involves waiting until the process has terminated. One of two things happen when joining: either the process has not terminated and is still executing, or it has terminated. If the process has terminated, the parent process continues the join phase. If not, the parent process waits. When the process terminates, it will wake up the parent process.
+
+Pseudo code for the parallel implementation is presented in \cref{lst:parallel_statement_pseudo_code}.
+
+\begin{lstfloat}
+\begin{lstlisting}[caption={Parallel statement pseudo code.}, label={lst:parallel_statement_pseudo_code}, style={CustomC++}, xleftmargin={4em}]
+/* fork phase */
+for_each process in parallel_processes {
+    process.fork();
+}
+/* join phase */
+for_each process in parallel_processes {
+    process.join();
+}
+\end{lstlisting}
+\end{lstfloat}
+
+The parallel statement is quite simplistic, as it only enqueues new processes to the current scheduler and waits for their termination. Much of the simplicity comes from the lack of a \textit{sequential} statement, simplifying the design significantly. 
+
+
+\FloatBarrier
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Timers}
+\label{sec:timers}
+
+Three types of timers are available: \textit{egg}, \textit{repeat} and \textit{date} timer. Timers are used for either explicit process suspension, or for timeout on channel or alternation operations. 
+
+Egg timer is used for relative timeout. Just as an egg timer in real life, it is used to countdown for a specified period of time. It is not a one\hyp{}shot timer, meaning the same timer can be reused multiple times. The countdown begins at the start of an operation, effectively resetting the timer if already used.
+
+Repeat (or loop) timer is used for a periodic repeating timeout. The repeat timer will timeout in a periodic fashion, given a specified period of time. The timer only resets after timeout. Compared to the egg timer, the repeat timer is also not a one\hyp{}shot timer and can be reused, but the repeat timer does not reset the countdown at the start of an operation.
+
+Date timer is used for absolute timeout. It is a one\hyp{}shot timer, and will always be expired after timeout. The date timer timeouts at a specified time point. The timer can never be reset, and therefore survives multiple operations.
 
 
+\FloatBarrier
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Timer implementation}
+\label{subsec:timer_implementation}
 
+All relevant code for the timer implementation can be found in the following file \texttt{timer.hpp}.
+
+Timers are represented through a common abstract class interface, shown in \cref{lst:timer_class_interface}. Instances of an egg or repeat timer converts the specified time duration to a time point, while the date timer already specifies a time point. This time point is stored in the base interface class. All timers support duration and time points from the standard library \texttt{std::chrono}.
+
+\begin{lstfloat}
+\begin{lstlisting}[caption={Timer class interface.}, label={lst:timer_class_interface}, style={CustomC++}, xleftmargin={4em}]
+class timer::Interface {
+protected:
+    using TimePointT = /* implementation defined */;
+    TimePointT time_point_;
+public:
+    virtual void reset() = 0;
+    virtual bool expired() = 0;
+    bool operator<( Interface const & other ) const 
+    { return time_point_ < other.time_point_; }
+    TimePointT const & get() const { return time_point_; }
+};
+\end{lstlisting}
+\end{lstfloat}
+
+When a timer is supplied for a timed operation, the reset method is called. For the egg timer, a reset results in calculating new time point. For the repeat timer, the next periodic time point is calculated if expired, else the time point remains the same.
+
+For some operations, such as alternation, multiple timers can be supplied. Since timers have a static time point after reset, the closest time point is chosen for timeout.
+
+Under the hood, an explicit process suspension with a given timer is simply enlisting the context to the scheduler sleep queue with the corresponding time point. When the time point is reached, the scheduler removes the context from the sleep queue and is rescheduled. The time point is checked by the scheduler context in the \texttt{wakeup\_sleep()} method. If the time point has already reached when suspending the process, it immediately returns. 
+
+A timed operation differs slightly. Whenever the context waits for some event during the operation, the context is enlisted in the scheduler sleep queue. Now, one of two things may happen: either the context is rescheduled by some event, or the operation times out and is rescheduled by the scheduler. If the context was rescheduled by the event, the scheduler removes the context from the sleep queue and is enqueued in the ready queue. If the time point expires, the scheduler transitions the context from the sleep queue to the ready queue in the \texttt{wakeup\_sleep()} procedure. Either way, the context is removed from the sleep queue and enqueued in the ready queue.
+
+Note that if the context is rescheduled by a remote event, the context is enlisted in the remote queue first, but it is not removed from the sleep queue. Its not until the scheduler transitions the context from remote to ready during the \texttt{transition\_remote()} procedure the context is removed from the sleep queue.
+
+
+\FloatBarrier
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Channels}
 
 
 
 
-\section{Alt}
+\FloatBarrier
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Alternation / Choice}
 

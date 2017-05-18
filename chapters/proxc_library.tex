@@ -12,6 +12,7 @@ This chapter introduces the library developed for this thesis. Details regarding
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Library Overview}
+\label{sec:library_overview}
 % API
 % features
 
@@ -26,6 +27,7 @@ The name ``ProXC++'' is a continuation of the original library ProXC \citep{pett
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Library Features}
+\label{sec:library_features}
 
 The complete set of features in ProXC++ is as follows:
 
@@ -46,12 +48,20 @@ The complete set of features in ProXC++ is as follows:
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Target Platforms}
+\label{sec:target_platforms}
 
 ProXC++ is mainly targeted for desktop environments, especially multicore architectures. However, it should support all platforms that has access to a C++14 compliant compiler and the Boost C++ libraries \citep{boost2017boost} as well as the Boost Context library \citep{kowalke2017boost} (as Boost is portable). ``\textit{Should}'' is used here, because ProXC++ is only tested on 64\hyp{}bit x86 Linux platform as of writing this thesis.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Dependencies}
+\label{sec:dependencies}
 
 ProXC++ uses a handful header\hyp{}only libraries from the Boost C++ libraries \citep{boost2017boost}, and the compiled library Boost Context \citep{kowalke2017boost} for portable and fast context switching between execution contexts. Boost Context is used as a foundation of the user\hyp{}thread implementation. As of why not rolling with a handwritten implementation of context switching, compared to ProXC, is with the simple reason of Boost Context being portable out of the box and writing context switching library is not the focus of this thesis.
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Influences}
+\label{sec:influences}
+
+FIXME
