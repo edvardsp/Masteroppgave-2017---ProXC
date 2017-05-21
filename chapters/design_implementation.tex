@@ -489,7 +489,97 @@ The following data members are present in a channel object: A spinlock. Atomic b
 \FloatBarrier
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Alternation}
-\label{sec:alternation_choice}
+\label{sec:alternation}
+
+Alternation is a construct allowing to wait on multiple alternatives simultaneously, selecting an alternative when one or more alternatives are ready. Each alternative has an optional corresponding block of code (closure) which is executed if chosen. Alternatives can also be guarded by a boolean value, enabling or disabling certain alternatives on certain conditions. These boolean guards are evaluated at the initialization of the alternation procedure.
+
+Three types of alternatives exists: channel operations, timers, and skip. Channel operation alternatives include both sending and receiving.
+
+The alternation procedure works as follows: at initialization, zero or more alternatives are enabled for selection. Each enabled alternative is checked if ready to synchronize. If one or more alternatives are ready, one is selected. If none are ready, the alternation procedure suspends and waits for the first alternative to become ready. This first ready alternative is automatically selected. When the alternation procedure has selected an alternative, the corresponding closure is executed if present.
+
+The alternatives operates, when enabled, as follows:
+
+\begin{enumerate}[topsep=0em,itemsep=-1em,partopsep=0.5em,parsep=1em]
+    \item \textbf{Channel operation} -- specifies a channel send or receive. A channel send is accompanied with the item to transmit, while a channel receive can optionally capture the received item in the alternative closure. The alternative becomes ready when the opposite side of the channel operation is present.
+    \item \textbf{Timeout} -- is a timer with a corresponding timeout. If the alternation process has not selected an alternative before timeout, the timer alternative is selected.
+    \item \textbf{Skip} -- is an alternative which is always ready. It can be compared to the \texttt{default} case in switch cases. If no alternatives are ready at the alternation initialization, the skip alternative is selected. 
+\end{enumerate}
+
+Multiple channel alternatives can be enabled for an alternation procedure. Multiple timer alternatives can also be enabled for an alternation procedure, however only the timer with the shortest deadline will be registered. If multiple skip alternatives are enabled, only the first skip alternative is registered.
+
+An channel alternative can either be selected \textit{actively} or \textit{passively}. Actively selecting involves the alternation procedure performing the selection, while passively selecting involves external events performing the selection. A channel alternative can also only be selected after being entered. Entering a channel alternative is essentially registering the interest of the alternation procedure to perform the channel operation. Leaving a channel alternative performs the opposite, unregistering this interest.
 
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Alternation Algorithm}
+\label{subsec:alternation_algorithm}
 
+The alternation algorithm works in three phases: \textit{checking}, \textit{waiting}, and \textit{completing} phase. The waiting phase is only entered if the checking phase results in no selected alternatives.
+
+\begin{enumerate}[topsep=0em,itemsep=-1em,partopsep=0.5em,parsep=1em]
+    \item \textbf{Checking phase} -- is the active phase of the procedure, where alternatives can be actively selected. Each enabled channel alternative is entered. Next, all channel alternatives are checked if ready. If one or more are ready, all ready channel alternatives are actively selected in random order. When the first alternative is successfully selected, the alternation procedure continues to the completing phase. If no channel alternatives are ready or no channel alternatives are successfully selected, the alternation procedure continues to the waiting phase.
+    \item \textbf{Waiting phase} -- is the passive phase of the procedure, where alternatives can be passively selected. If a skip alternative is enabled, the skip alternative is now selected and the procedure continues to the completing phase. If a timer alternative is enabled the procedure suspends itself until the timer expires, else the procedure suspends itself indefinitely. When the procedure is rescheduled, it is either because of an channel alternative passively selecting or the timer alternative has expired, and the corresponding alternative is selected.
+    \item \textbf{Completing phase} -- each channel alternative which were entered are now left, and the closure of the selected alternative is executed if present. This completes the alternation procedure.
+\end{enumerate}
+
+Note that if any channel alternatives becomes ready after it has been checked by the alternation procedure in the checking phase, that alternative has to wait until the procedure enters the waiting phase to try passively select itself.
+
+Given a number of channel alternatives are ready during the checking phase, each alternative must be resolved before continuing to the waiting or completing phase. Resolving a channel alternative involves trying to complete the channel operation, which either results in a success or fail. The first channel alternative which results in a success short\hyp{}circuits the selection order and continues to the completing phase. However, an alt\hyp{}to\hyp{}alt channel operation has a slightly larger overhead because of alt\hyp{}to\hyp{}alt synchronization, which means trying to complete the channel operation may result in a try\hyp{}later result. A try\hyp{}later result means the alt\hyp{}to\hyp{}alt synchronization cannot be resolved right now, and must be tried later. The selection order therefore skips the alternative and tries later. All channel alternatives must be resolved failed before continuing to the waiting phase.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Alternation Implementation}
+\label{subsec:alternation_implementation}
+
+All relevant code is found in the files \texttt{alt.hpp} and \texttt{alt.cpp}, and all files within the folder \texttt{alt/}.
+
+The alting procedure is implemented as a class object, which is allocated on the stack. The channel alternative is composed into two different channel alternative objects, each for the sending and receiving case. Both alternative objects have inherit from a common abstract class interface. The timer and skip alternative is both allocated as a data member in the alting object. 
+
+After creating an alting object, alternatives can be created by chaining function calls to the alting object. The four functions \texttt{send}, \texttt{recv}, \texttt{timeout} and \texttt{skip} creates a channel send, channel receive, timeout and skip alternative, respectively. The channel alternative functions has a corresponding replicator function for creating dynamic number of channel alternatives over a dynamic number of channel ends These are called \texttt{send\_for} and \texttt{recv\_for}. All alternative creating functions also has an corresponding guarded function, which is the function name with \texttt{\_if} appended, e.g. \texttt{send\_if}. Lastly, the function call \texttt{select} performs the alting procedure and consumes the alting object in the process. The \texttt{select} function call is always last. See \cref{lst:code_example_alting} for a code example.
+
+\begin{lstfloat}
+\begin{lstlisting}[caption={Code example of alting.}, label={lst:code_example_alting}, style={CustomC++}]
+Alt()                           // creates alting object
+    .send(tx, item)             // w/o guard, w/o closure
+    .recv_if(cond1, rx)         // w   guard, w/o closure
+    .timeout(timer, [](){})     // w/o guard, w   closure
+    .skip_if(cond2, &some_func) // w   guard, w   closure
+    /* more alternatives can be inserted here */
+    .select();                  // selects an alternative
+\end{lstlisting}
+\end{lstfloat}
+
+All of the channel alternative functions simply generate and store alternatives in the alting object. However, some additional care has to be taken into consideration. Multiple alternatives can be created on the same channel end. If this is the case, then the alting object chooses one at random which is used during the alting procedure. If both ends of the same channel is detected as alternatives, then all alternatives for that channel is discarded.
+
+Timeout alternatives are stored as a single entry in the alting object. Whenever a timeout alternative is created, the timeout period is checked against the current timeout period, initialized to maximum value. If the timeout period is lower than the current one, the new timeout alternative is swapped in place.
+
+Skip alternatives are stored as a single entry in the alting object. Compared to the timeout alternative, only the first skip alternative is stored. All subsequent skip alternatives are discarded.
+
+The alting object uses a spinlock to enforce active and passive selection. An atomic flag and a pointer is used to set the ``winner'' of the selection. During the checking phase, the alting object holds the spinlock. If the alting procedure actively selects an alternative, the atomic flag is set and the pointer is set accordingly. Only after alting procedure continues to the waiting or completing phase is the spinlock released. Any alternative that becomes ready during the checking phase and tries to select passively must acquire the alting spinlock first. This allows the alting procedure to enforce all alternatives trying to passively select to wait until the waiting or completing phase. 
+If the alting procedure enters the waiting phase, the alting procedure suspends itself and the lock is released. The first alternative to acquire the lock and set the atomic flag is allowed to set the winner pointer. This alternative also reschedules the alting procedure. 
+
+\begin{lstfloat}
+\begin{lstlisting}[caption={Code example of alting.}, label={lst:code_example_alting}, style={CustomC}]
+lock = spinlock.aquire();
+ready_selected = checking_phase();
+winner = if ! ready_selected {
+    if skip { skip_alternative }
+    else {
+        // atomically suspend and release lock
+        timeout = scheduler.alt_wait( lock );
+        if timeout { timeout_alternative }
+        else       { channel_alternative }
+    }
+} else { ready_alternative };
+completing_phase(winner);
+\end{lstlisting}
+\end{lstfloat}
+
+\begin{lstfloat}
+\begin{lstlisting}[caption={Code example of alting.}, label={lst:code_example_alting}, style={CustomC}]
+lock = spinlock.aquire();
+if ! alt.atomic_flag.test_and_set() { return false; }
+alt.winner = channel_alternative;
+return true;
+\end{lstlisting}
+\end{lstfloat}
