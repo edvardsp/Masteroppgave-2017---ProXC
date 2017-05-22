@@ -580,6 +580,10 @@ completing_phase(winner);
 lock = spinlock.aquire();
 if ! alt.atomic_flag.test_and_set() { return false; }
 alt.winner = channel_alternative;
+scheduler.reschedule(alt.context);
 return true;
 \end{lstlisting}
 \end{lstfloat}
+
+% FIXME uniform random distribution
+% FIXME fairness vs determinism
