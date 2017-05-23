@@ -7,9 +7,64 @@
 \chapter{Performance}
 \label{ch:performance}
 
+Benchmarking performance of a concurrency library is difficult. Some might even argue performance is not important, but rather the abstractions are correct. However, some metrics and parallel design patterns can be tested. 
 
-\section{Setup}
+The idea is to create some concurrent programs with different degrees of parallelism. Metrics such as concurrent throughput, sequential speed, and load balancing are factors which can influence performance.
 
-\section{Tests}
+To have some appropriately comparable benchmarks, the library C++CSP and the programming language Go have been chosen because of their dynamic multithreading capabilities. To show the direct increase with multicore utilization, the singlecore equivalent test implementations of ProXC++ and Go are also included. C++CSP does not have any facilities to limit the resource utilization to singlecore, and therefore only have the multicore implementations included.
 
+FIXME should not be the only metric
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Benchmark Setup}
+\label{sec:benchmark_setup}
+
+All benchmarks performed in this chapter are computed on the same machine; a desktop PC with an Intel\textregistered{} Core\texttrademark{} i7-4790 4GHz processor, 16GiB DDR3 RAM, running Ubuntu\textregistered{} 16.04 xenial, x86\_64 Linux\textregistered{} 4.4.0 as operating system.
+
+Intel Core is a registered trademark of Intel Corporation, Linux is the registered trademark of Linus Torvaldsen in the U.S. and other countries, Ubuntu is a registered trademark of Canonical Ltd.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Benchmark Tests}
+\label{sec:benchmark_tests}
+% commstime
+% concurrent sieve
+% concurrent mandelbrot
+% stressed alt
+
+Three type of benchmark tests are performed: \textit{extended commstime}, \textit{concurrent mandelbrot} and \textit{concurrent prime sieve}. These three tests have various degrees of sequential and parallel characteristics, aiming to highlight the concurrency adaptation capabilities and concurrent throughput of each entry.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Extended Commstime}
+
+The extended commstime test is a custom derivation of the original commstime test. The original commstime test \citep{roger2001commstime} is a pseudo\hyp{}standard benchmark for test sequential channel communication between processes. Three processes called \textit{prefix}, \textit{delta} and \textit{successor} creates a channel cycle, sending an integer in loops. Each loop increments the integer. A fourth process called \textit{consumer} receives the integer on each loop cycle. The consumer receives a number of integers and calculates the average time to receive the integer. The commstime test mostly gives a metric for the overhead regarding channel communication.
+
+Channel communication overhead is not that interesting of a metric with dynamic multithreading. Commstime is however a good metric for a programs adaptability of sequential programs. I therefore propose the \textit{extended commstime} test. Instead of three processes in a channel communication cycle, $N$ processes are created in a chain of channel communications, creating a variable sized cycle.
+
+The extended commstime varies the chain length from $N=1$ to $1000$. Each chain with a given $N$ calculates the average time to receive $100$ integer over $50$ runs. The results are presented in 
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Concurrent Mandelbrot}
+
+Some problems are embarrassingly parallel \citep{wilkinson1999parallel}, where little to no effort is needed to seperate the work load into parallel tasks. The mandelbrot set is a perfect example of an embarrassingly parallel problem, where each point in the set can be calculated independently of each other.
+
+Generating a mandelbrot set is perfect for testing the parallel capabilities of the entries, as well as how good the load balancing is.
+
+The mandelbrot set of a given dimension is computed in a map\hyp{}reduce manner, where a number of workers are generated. Each worker computes a coloumn of the set. Two versions of the map\hyp{}reduce is tested: one where the number of workers are fixed to the number of available cores, and one where one worker is spawned for each coloumn. The idea is to first test the optimal setup of workers, while the second tests the load balancing capabilities of the entries. 
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Concurrent Prime Sieve}
+
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Analysis}
+\label{sec:analysis}
+
+
