@@ -5,28 +5,115 @@
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\chapter{Discussion}
-\label{ch:discussion}
+%\chapter{Discussion}
+%\label{ch:discussion}
 
-\section{Why some features?}
+\chapter{ProXC++ vs. ProXC}
+% single-core vs multi-core
+% performance?
+% ergonomics?
+% feature difference, why some was chosen or not
+% why some features?
+
+This chapter compares and discusses the differences between the two projects ProXC++ and ProXC, differences such as abstractions, library features, usability, and performance. This comparison should provide an insightful look into both libraries, as both cater to the same motivation; providing a CSP abstraction for C and C++ programs.
+
+\section{Similarities and Differences in Library Features}
+
+\Cref{tab:library_features_comparison} gives a rough comparison between ProXC++ and ProXC. The main difference to take from the comparison is the more dynamic foundation ProXC++ gives compared to ProXC. In ProXC++, a dynamic number of processes can be spawned in parallel, dynamic number of alternatives can be alted on, and etc. This allows to create more flexible less hard coded programs, and consequently creating more maintainable, expressive concurrent systems.
+
+\begin{table}[]
+    \centering
+    \begin{tabular}{l|l|l}
+                                                                             & \multicolumn{1}{c|}{\textbf{ProXC++}}                                                                                                                       & \multicolumn{1}{c}{\textbf{ProXC}}                                                                                                                   \\
+                                                                             \hline
+    \textbf{\begin{tabular}[c]{@{}l@{}}Lightweight\\ processes\end{tabular}} & \begin{tabular}[c]{@{}l@{}}Third party library, portable,\\ customizable stack types.\end{tabular}                                                         & \begin{tabular}[c]{@{}l@{}}Handwritten, not portable,\\ hardcoded stack types.\end{tabular}                                                          \\
+    \hline
+    \textbf{\begin{tabular}[c]{@{}l@{}}Process\\ spawning\end{tabular}}      & \begin{tabular}[c]{@{}l@{}}Synchronous parallel \\ spawning of dynamic\\ number of processes.\end{tabular}                                                 & \begin{tabular}[c]{@{}l@{}}Synchronous/asynchronous\\ nested parallel and sequential\\ process spawning of\\ fixed number of processes.\end{tabular} \\
+    \hline
+    \textbf{Channels}                                                        & \begin{tabular}[c]{@{}l@{}}Synchronous and unbuffered,\\ unidirectional, one-to-one, \\ type safe.\end{tabular}                                            & \begin{tabular}[c]{@{}l@{}}Synchronous and unbuffered,\\ bidirectional, any-to-any,\\ size safe.\end{tabular}                                        \\
+    \hline
+    \textbf{Alternation}                                                     & \begin{tabular}[c]{@{}l@{}}Alting on dynamic number \\ of alternatives. Alternatives\\ include channel send and\\ receive, timeouts and skip.\end{tabular} & \begin{tabular}[c]{@{}l@{}}Alting on fixed number\\ of alternatives. Alternatives\\ include channel receive,\\ timeouts and skip.\end{tabular}       \\
+    \hline
+    \textbf{\begin{tabular}[c]{@{}l@{}}Threading\\ model\end{tabular}}       & \begin{tabular}[c]{@{}l@{}}M:N, hybrid threading model.\\ Support for multicore.\end{tabular}                                                              & \begin{tabular}[c]{@{}l@{}}M:1, user threading model.\\ No support for multicore.\end{tabular}                                                      
+    \end{tabular}
+    \caption{Comparison of library features between ProXC++ and ProXC}
+    \label{tab:library_features_comparison}
+\end{table}
+
+
+%\section{Why some features?}
 % why not async channels?
 % par vs par&seq
 % why not async composite processes?
 % extended rendezvous
 
-\section{Shortcomings and Limitation}
+
+\section{Different Capabilities}
+
+The second big difference is the threading model used, where ProXC++ uses a hybrid threading model while ProXC uses a user threading model. The use of threading models only affects the performance in concurrent programs. The same concurrent program running on both ProXC++ and ProXC should behave just the same. But, since the main development in processor architectures is in multicore, there is an incentive to use the available resources for a performance gain.
+
+Now, not everything is about performance. Some might argue correct and expressive abstractions are more important than performance. The abstractions available in ProXC++ and ProXC are both based on CSP. However, ProXC++ has a greater expressive power than ProXC because of replicators for parallel spawning and alternatives for alting. Due to this limitation, ProXC cannot express dynamic numbers of processes and alternatives for alting. 
 
 
-\section{Difficulty of Multicore CSP}
+
+\chapter{Difficulty of Multicore CSP}
 % is performance important?
-% pinning threads to logical cores?
 % using spinlocks vs other locks? hybrids?
+% locking kernel-threads to cores
+
+Creating a multicore CSP library is mostly motivated by the potential performance increase in concurrent systems by utilizing the available cores. CSP is mostly about creating a correct and expressive abstraction over concurrent systems rather than performance, but it is tempting to fully utilize multicore architectures because of the inherently parallel nature of CSP. Therefore, the question is rather simple: is the difficulty of implementing multicore CSP worth it?
+
+\section{Critical Sections}
+
+What separates singlecore vs multicore implementations of user\hyp{}threaded runtime systems is the ability with singlecore runtime systems to reason and control which states processes are in, when they are running, and etc. This is especially important in critical regions of the runtime system, being able to justify certain algorithms based on process states.
+
+For a singlecore runtime system, any critical regions and side effects can be fully reasoned about. Since only one process runs at any given moment, code running between descheduling points essentially becomes mutual exclusion. Multicore runtime systems cannot follow the same reasoning, since it has much less control whether a given process is currently running on another processor core not. Critical regions in the runtime system must most likely enforce some sort of mutual exclusion. 
+
+\section{Choice of Mutual Exclusion Locks}
+
+What kind of locks a multicore runtime system uses to enforce mutual exclusion is also important. Different locks and their variations, such as OS mutexes, spinlocks, read\hyp{}write locks, and so forth have different impact on performance in different situations. For instance short\hyp{}time held locks, some variant of spinlocks is preferred. For locks with high contention, some type of non\hyp{}linear back off procedure is needed. Either way, choosing what kind of lock is suitable for a given situation requires knowledge of different locks and the situation itself.
+
+\section{Non\hyp{}Blocking vs Mutual Exclusion Design}
+
+Sometimes, it is desirable to design a non\hyp{}blocking design rather than mutual exclusion design. A non\hyp{}blocking design is usually much more demanding to develop than a mutual exclusion design, as it is harder to prove the design is correct. Non\hyp{}blocking design is often preferable over mutual exclusion, as it both scales better with number of processor cores and has a better throughput. 
+
+\section{Pinning Kernel\hyp{}Threads to Processor Cores}
+
+Mutlicore runtime systems must resort to some sort of scheduler processes, each running on a kernel\hyp{}thread. A factor to consider is whether to set thread affinity for each kernel\hyp{}thread, i.e. pinning each kernel\hyp{}thread to a different processor core. The idea is avoid the kernel\hyp{}thread from migrating between processor cores, which causes discrepancies in the runtime system. The counter argument is the OS can help with load balancing kernel\hyp{}threads with a much higher CPU load on processor cores which are less used. 
 
 
-\section{ProXC++ vs. ProXC}
-% single-core vs multi-core
-% performance?
-% ergonomics?
-% feature difference
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Shortcomings and Limitations}
+\label{ch:shortcomings_limitations}
+
+Much of the shortcomings and limitations in ProXC has been improved upon in ProXC++. This includes enforcing correct usage, and portability issues with user\hyp{}threads. However, some issues are present in the current state of ProXC++.
+
+
+\section{Enforcing Correct Usage}
+
+ProXC++ goes to great lengths to enforce correct usage by using much of the semantic facilities present in the C++ programming language. But all problems existing in C++ programs, such as null pointer dereferencing and memory leaks, are possible in ProXC++ programs.  
+
+It is impossible to create a system which always generates and enforces correct program behaviour, and somewhere does the line have to be drawn. For instance, channels in ProXC++ are one\hyp{}to\hyp{}one, and if multiple processes where to try operating on the same channel end simultaneously would result in undefined behaviour. Channel ends have therefore been made non\hyp{}copyable to enforce the channel end only having a single owner and user. It is however very easy to bypass this by sending a reference of the channel end when spawning new processes, which makes multiple users possible. Having shared memory between processes is also entirely possible, but is highly discouraged.
+
+ProXC++ is all about providing a safe framework to create concurrent systems. Creating a complete safe is framework is impossible, as the foundation of C++ is inherently unsafe. Therefore, ProXC++ only enforces correct usage to some degree, and let the rest be up to the programmer.
+
+
+\section{Inefficient Load Balancing}
+
+ProXC++ uses work stealing for load balancing work between schedulers. A scheduler continues to run work as long as it has ready work. However, when a scheduler runs out of work and becomes idle, it tries to steal ready work from other schedulers. How these idle scheduler decide when to steal, how much ready work to steal, and so forth is not optimal nor efficient.
+
+Currently, when a scheduler becomes idle it tries to steal once from a random scheduler. If the steal is successful it resumes the stolen work. However, if the steal fails the scheduler sleeps for $1$ millisecond and tries again when it wakes up. There are no coordination between the schedulers, as a scheduler with lots of ready work has no way to indicate to other schedulers to steal from it. 
+
+This sort of brute\hyp{}force approach to find ready work is of course not desirable, as concurrent program with few parallel tasks will generate lots of unnecessary wake\hyp{}ups of from idle scheduler trying to find work. This periodical wake\hyp{}up can also cause unnecessary migration of tasks between schedulers when few sequential dependent tasks are running. 
+
+The unnecessary migration of tasks and wasteful wake\hyp{}ups becomes negligible after an amount of parallel semi\hyp{}independent tasks is present in the program.
+
+
+\section{Wasteful use of Resources}
+
+The ProXC++ runtime system has to manage a great deal of resources, including user\hyp{}thread management and inter\hyp{}process communication. Much resources used with user\hyp{}thread management are one\hyp{}time use, meaning nothing is reused of stack or control data structures related to the user\hyp{}threads. This creates lots of unnecessary allocations of dynamic memory which could have been reused for later use.
+
+A smarter runtime system could detect these one\hyp{}time use resources and reuse the resource rather than deallocating it. This of course requires a much more complex resource management by the runtime system, and could potentially introduce a greater overhead.
+
 
 

@@ -4,13 +4,46 @@
 %%=========================================
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Future Work}
 \label{ch:future_work}
 
-\section{More efficient use of resources}
+There are some opportunities for future work for which the library could benefit from. This chapter discusses the biggest potential contenders for future work, which has been detected during the project time line.
 
-\section{C Bindings}
 
-\section{Useful Features}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{More Efficient Runtime System}
+
+The desire for an efficient runtime system is a no\hyp{}brainer. An optimal library would be as efficient as possible, but is rarely the case. There are however some aspects of the current implementation of the ProXC++ runtime system that can be directly addressed as inefficient or suboptimal, which could potentially increase the performance and processor utilization.
+
+First, the work\hyp{}stealing protocol the schedulers use is not working properly. Ready work is not properly being distributed if the type of work is short lived or rarely deschedules. Schedulers are also inefficient at finding ready work if they are idle. Currently, when a scheduler tries to steal work and fails, it sleeps for $1$ millisecond and tries again. This is obviously not a good approach, as this generates unnecessary CPU time. Therefore, the work stealing protocol between schedulers has a huge improvement.
+
+Secondly, allocation of processes and process stacks could be improved. Currently, nothing is reused when destroying a process after returning. Stack allocations could be pooled, which is supported by the Boost Context library. 
+
+Lastly, the alt\hyp{}to\hyp{}alt synchronization between an alting channel send and alting channel receive is horribly inefficient. This has mostly to do with a poor design of two alting processes selecting each other. 
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{C Wrapper API}
+
+ProXC++ is first of all a C++ library. It would however be interesting and potentially useful be able to use ProXC++ for C code as well. This would require to create a C wrapper API for ProXC++.
+
+Now, why is it desirable to using ProXC++ in C code when ProXC is readily available for creating CSP programs in C? The main arguments are ProXC++ is portable and has multicore support, both of which would be much more challenging to achieve with ProXC. 
+
+The biggest hurdle of creating a C wrapper API would be translating C++ semantics to C. ProXC++ uses a great amount such as templates and move semantics to enforce both type safety, generalized processes, and unique ownership of channel ends. Such semantics have no intuitive translation, and a more restrictive, generalized wrapper API has to probably be created to work in C.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Improving on the Library Feature Set}
 % extended Tx/Rx
+% Async I/O, networking
+% class defined processes
+
+The feature set provided by ProXC++ is a good foundation for creating any type of concurrent program with CSP abstractions. However, some library features could potentially be a good extension to the current feature set.
+
+Extended channel input or output, also called extended rendezvous, is about extending the synchronization in channel sending and receiving. An extended rendezvous allows the sender or receiver to perform additional operations after the channel transmission has occured, but before both channel ends resumes execution. One could see this as a an ``invisible'' middle\hyp{}man process performing some operation without breaking the existing synchronization.
+
+Class defined processes, same as in C++CSP2, could be a useful addition. Defining a process from a class point of view rather than a function allows for more rigid definitions of processes. A well defined constructor, destructor and execution body can be defined, as well a more intuitive syntax can be used, i.e. calling a class constructor rather than a process creation function.
+
+Asynchronous I/O operations is not supported with ProXC++. Any call to a blocking system call effectively blocks the entire kernel\hyp{}thread, halting any progress of processes residing on the given kernel\hyp{}thread. Go has support for asynchronous I/O operations, letting a scheduler with its processes continue on another kernel\hyp{}thread while the blocking process halts the current kernel\hyp{}thread. Asynchronous I/O could be used to implement support for networking and other blocking operations, but would require extensive development of the current implementation.
+

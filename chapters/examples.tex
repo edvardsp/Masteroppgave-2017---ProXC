@@ -10,11 +10,6 @@
 
 This chapter introduces how ProXC++ is used in C++ programs. Only the basics of ProXC++ is presented in this chapter, introducing all necessary features for understanding the library. For more advanced examples, check out the examples in the \texttt{examples/} folder on GitHub \citep{pettersen2017proxcgithub}.
 
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Prerequisites}
-\label{sec:example_prerequisites}
-
 First of all, ProXC++ must be installed on the work environment. ProXC++ is available free of charge on GitHub \citep{pettersen2017proxcgithub}, and following the install guide on the readme should be sufficient.
 
 It is given the header file \lstinline[style={CustomC++}]|#include <proxc.hpp>| is included in all code examples shown in this chapter, as well as in all C++ files programming with ProXC++.
@@ -175,11 +170,3 @@ Alt()
 The four alternative types channel send, channel receive, timeout and skip has the corresponding alternative methods \lstinline[style={CustomC++}]|send|, \lstinline[style={CustomC++}]|recv|, \lstinline[style={CustomC++}]|timeout| and \lstinline[style={CustomC++}]|skip|, respectively. Each alternative method can prepend a guard with a boolean condition by calling the altered alternative method, which has an appended \lstinline[style={CustomC++}]|_if| to the method name, e.g. \lstinline[style={CustomC++}]|send_if|. All alternative methods, both with and without a guard, can have an optional closure. See \cref{lst:alting_procedure} for reference.
 
 The four alternatives are as follows: channel send and receive takes an appropriate channel end and data, and performs the given channel operation. A timeout specifies a timer and wait until that timer has expired. A skip is always ready, much like the default keyword in a switch construct. 
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Scheduling Policy}
-\label{sec:scheduling_policy}
-
-By default, ProXC++ is hard coded to use worker threads equal to the number of logical cores on the processor and work stealing for load balancing between the worker threads. There are currently no implemented API to directly change the scheduling policy. A round robin scheduling policy is implemented, but direct change in the implementation has to be made to enable the round robin policy.
-
