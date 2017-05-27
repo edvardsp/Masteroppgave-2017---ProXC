@@ -21,6 +21,11 @@
 \linespread{1.5}
 \usepackage{float}
 
+
+\usepackage{caption}           % Use table caption
+\DeclareCaptionType[fileext=ext, name=Listing, placement=tbph!]{listing}
+\captionsetup[listing]{labelsep=colon, font={small}, skip=8pt}
+
 \usepackage{chngcntr}
 \counterwithout{footnote}{chapter}
 
@@ -54,7 +59,7 @@
 \floatname{enumeratefloat}{List}
 
 % listings with styles
-\usepackage{lst_styles}
+\usepackage{styles/lst_styles}
 
 \newfloat{lstfloat}{htbp}{lop}
 \floatname{lstfloat}{Listing}

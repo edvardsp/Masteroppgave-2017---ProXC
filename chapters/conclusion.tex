@@ -3,11 +3,30 @@
 % !TEX spellcheck = en-US
 %%=========================================
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Conclusion}
 \label{ch:conclusion}
 
+Concurrent programming has long existed before multicore processors entered the mainstream market. With the ever increasing use of multicore processors, the demand for software which are scalable and fully utilize these processors are becoming more evident, and concurrent programming is the tool to realize such software.
+
+For many programmers, it is hard to write correct concurrent systems with concurrent programming, and usually fail to utilize the available multiple processor cores. Communicating Sequential Processes (CSP) is a formal language for describing concurrent systems, which provides a safer abstraction level by limiting all communication between processes to message\hyp{}passing. CSP also enables reasoning on concurrent systems whether the described system is correct or not.
+
+The work on this thesis is motivated by creating a library for C++ programs which fully utilizes available processor cores combined with the safe and correct parallel nature of CSP. The ambition is that this library should make it easier to create correct concurrent systems which are scalable and performant with multicore processors, as well as using concurrency fearlessly. 
+
+The work and results presented in this thesis should prove helpful for designing and implementing other multicore CSP libraries. Especially, the work on designing and implementing a runtime system for multicore scheduling should prove useful for similar projects.
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Availability}
 
+ProXC++ is available online, open\hyp{}source and free of charge, on GitHub \citep{pettersen2017proxcgithub}. Any contributions to the library are welcomed. Any inquiries regarding the thesis or the library can contact the author via mail, \href{mailto:edvard.pettersen@gmail.com}{edvard.pettersen@gmail.com}, or through the project page on GitHub.
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Acknowledgment}
 % øyvind timers
+
+I would like to thank Øyvind Teig for the ideas and definitions of the egg, repeat and date timers. Further, I would also like to thank both Øyvind Teig and Sverre Hendseth for our interesting discussions about CSP related topics.

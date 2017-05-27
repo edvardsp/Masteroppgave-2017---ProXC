@@ -4,9 +4,14 @@
 %%===================================
 
 \documentclass[10pt,b5paper]{report}
-\usepackage{thesisstyle}
+\usepackage{styles/thesisstyle}
 
 %%===================================
+
+% glossaries must be defined in the preamble
+%\usepackage[acronym,toc]{glossaries}
+%\makeglossaries
+%\input{library/glossaries.tex}
 
 \begin{document}
 
@@ -28,18 +33,21 @@
 % content
 \include{chapters/introduction}
 
-\part{Preliminaries}
+\part{Preliminaries} \label{part:preliminaries}
+
 \include{chapters/background}
 \include{chapters/multicore_csp}
 
-\part{ProXC++ -- The Library}
+\part{ProXC++ -- The Library} \label{part:proxc++}
+
 %FIXME suggestion to the reader?
 \include{chapters/proxcpp_library}
 \include{chapters/design_implementation}
 \include{chapters/examples}
 \include{chapters/performance}
 
-\part{Discussions}
+\part{Discussions} \label{part:discussions}
+
 \include{chapters/discussion}
 \include{chapters/future_work}
 \include{chapters/conclusion}
@@ -48,9 +56,12 @@
 \appendix
 \include{appendices/acronyms}
 
+% glossaries
+%\printglossary
+
 % bibliography
 \bibliographystyle{unsrtnat}
 \addcontentsline{toc}{chapter}{\bibname}
-\bibliography{refs}  
+\bibliography{library/refs}  
 
 \end{document}
