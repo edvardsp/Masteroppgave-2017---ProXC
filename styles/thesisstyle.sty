@@ -43,6 +43,7 @@
 \pdfcompresslevel=9
 
 % hyphenation rules
+
 \usepackage{hyphenat}
 \hyphenation{di-rec-tio-nal}
 \hyphenation{dy-nam-ic-ally}
@@ -53,18 +54,24 @@
 \hyphenation{se-lect-ing}
 \hyphenation{spawn-ed}
 
+% custom commands
+
+\newcommand{\ignore}[1]{}
+
 % table floats
 
 \newfloat{enumeratefloat}{htbp}{lop}
 \floatname{enumeratefloat}{List}
 
 % listings with styles
+
 \usepackage{styles/lst_styles}
 
 \newfloat{lstfloat}{htbp}{lop}
 \floatname{lstfloat}{Listing}
 
-% must be last
+% cleverref must be last
+
 \usepackage{cleveref}
 \crefname{chapter}{Chapter}{Chapters}
 \crefname{section}{Section}{Sections}

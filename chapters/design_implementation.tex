@@ -379,7 +379,7 @@ A channel operation for a non\hyp{}alting channel end can be considered to consi
 
 Note that the entire procedure is surrounded by mutual exclusion using the channel lock, because the channel ends must arrive at the channel in a sequential order.
 
-To elaborate on step \ref{step:channel_nonalt_complete}, selecting the opposite channel end is necessary since an alting opposite channel end is not committal to the channel operation, even though it is present. Selecting a non\hyp{}alting channel end is always successful since it is always committal, while an alting channel end may fail. This selection process is further explained in \cref{sec:alternation_choice}.
+To elaborate on step \ref{step:channel_nonalt_complete}, selecting the opposite channel end is necessary since an alting opposite channel end is not committal to the channel operation, even though it is present. Selecting a non\hyp{}alting channel end is always successful since it is always committal, while an alting channel end may fail. This selection process is further explained in \cref{sec:alternation}.
 
 Completing the transmission in step \ref{step:channel_nonalt_complete} involves transmitting the item and setting the consumed flag, and checking the transmission in step \ref{step:channel_nonalt_wait} involves checking and resetting the consumed flag.
 
@@ -559,7 +559,7 @@ The alting object uses a spinlock to enforce active and passive selection. An at
 If the alting procedure enters the waiting phase, the alting procedure suspends itself and the lock is released. The first alternative to acquire the lock and set the atomic flag is allowed to set the winner pointer. This alternative also reschedules the alting procedure. 
 
 \begin{lstfloat}
-\begin{lstlisting}[caption={Code example of alting.}, label={lst:code_example_alting}, style={CustomC}]
+\begin{lstlisting}[caption={Code example of alting.}, label={lst:active_alting}, style={CustomC}]
 lock = spinlock.aquire();
 ready_selected = checking_phase();
 winner = if ! ready_selected {
@@ -576,7 +576,7 @@ completing_phase(winner);
 \end{lstfloat}
 
 \begin{lstfloat}
-\begin{lstlisting}[caption={Code example of alting.}, label={lst:code_example_alting}, style={CustomC}]
+\begin{lstlisting}[caption={Code example of alting.}, label={lst:passive_alting}, style={CustomC}]
 lock = spinlock.aquire();
 if ! alt.atomic_flag.test_and_set() { return false; }
 alt.winner = channel_alternative;

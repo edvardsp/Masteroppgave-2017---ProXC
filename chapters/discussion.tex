@@ -19,20 +19,43 @@ This chapter compares and discusses the differences between the two projects Pro
 
 \Cref{tab:library_features_comparison} gives a rough comparison between ProXC++ and ProXC. The main difference to take from the comparison is the more dynamic foundation ProXC++ gives compared to ProXC. In ProXC++, a dynamic number of processes can be spawned in parallel, dynamic number of alternatives can be alted on, and etc. This allows to create more flexible less hard coded programs, and consequently creating more maintainable, expressive concurrent systems.
 
-\begin{table}[]
+\begin{table}
     \centering
     \begin{tabular}{l|l|l}
-                                                                             & \multicolumn{1}{c|}{\textbf{ProXC++}}                                                                                                                       & \multicolumn{1}{c}{\textbf{ProXC}}                                                                                                                   \\
-                                                                             \hline
-    \textbf{\begin{tabular}[c]{@{}l@{}}Lightweight\\ processes\end{tabular}} & \begin{tabular}[c]{@{}l@{}}Third party library, portable,\\ customizable stack types.\end{tabular}                                                         & \begin{tabular}[c]{@{}l@{}}Handwritten, not portable,\\ hardcoded stack types.\end{tabular}                                                          \\
-    \hline
-    \textbf{\begin{tabular}[c]{@{}l@{}}Process\\ spawning\end{tabular}}      & \begin{tabular}[c]{@{}l@{}}Synchronous parallel \\ spawning of dynamic\\ number of processes.\end{tabular}                                                 & \begin{tabular}[c]{@{}l@{}}Synchronous/asynchronous\\ nested parallel and sequential\\ process spawning of\\ fixed number of processes.\end{tabular} \\
-    \hline
-    \textbf{Channels}                                                        & \begin{tabular}[c]{@{}l@{}}Synchronous and unbuffered,\\ unidirectional, one-to-one, \\ type safe.\end{tabular}                                            & \begin{tabular}[c]{@{}l@{}}Synchronous and unbuffered,\\ bidirectional, any-to-any,\\ size safe.\end{tabular}                                        \\
-    \hline
-    \textbf{Alternation}                                                     & \begin{tabular}[c]{@{}l@{}}Alting on dynamic number \\ of alternatives. Alternatives\\ include channel send and\\ receive, timeouts and skip.\end{tabular} & \begin{tabular}[c]{@{}l@{}}Alting on fixed number\\ of alternatives. Alternatives\\ include channel receive,\\ timeouts and skip.\end{tabular}       \\
-    \hline
-    \textbf{\begin{tabular}[c]{@{}l@{}}Threading\\ model\end{tabular}}       & \begin{tabular}[c]{@{}l@{}}M:N, hybrid threading model.\\ Support for multicore.\end{tabular}                                                              & \begin{tabular}[c]{@{}l@{}}M:1, user threading model.\\ No support for multicore.\end{tabular}                                                      
+    
+        \ignore{empty} & 
+        \multicolumn{1}{c|}{\textbf{ProXC++}} & 
+        \multicolumn{1}{c}{\textbf{ProXC}} 
+        
+        \\ \hline
+        
+        \textbf{\begin{tabular}[c]{@{}l@{}}Lightweight\\ processes\end{tabular}} & 
+        \begin{tabular}[c]{@{}l@{}}Third party library, portable,\\ customizable stack types.\end{tabular} &
+        \begin{tabular}[c]{@{}l@{}}Handwritten, not portable,\\ hardcoded stack types.\end{tabular}
+        
+        \\ \hline
+        
+        \textbf{\begin{tabular}[c]{@{}l@{}}Process\\ spawning\end{tabular}} &
+        \begin{tabular}[c]{@{}l@{}}Synchronous parallel \\ spawning of dynamic\\ number of processes.\end{tabular} &
+        \begin{tabular}[c]{@{}l@{}}Synchronous/asynchronous\\ nested parallel and sequential\\ process spawning of\\ fixed number of processes.\end{tabular}
+        
+        \\ \hline
+        
+        \textbf{Channels} &
+        \begin{tabular}[c]{@{}l@{}}Synchronous and unbuffered,\\ unidirectional, one-to-one, \\ type safe.\end{tabular} &
+        \begin{tabular}[c]{@{}l@{}}Synchronous and unbuffered,\\ bidirectional, any-to-any,\\ size safe.\end{tabular}
+        
+        \\ \hline
+        
+        \textbf{Alternation} &
+        \begin{tabular}[c]{@{}l@{}}Alting on dynamic number \\ of alternatives. Alternatives\\ include channel send and\\ receive, timeouts and skip.\end{tabular} &
+        \begin{tabular}[c]{@{}l@{}}Alting on fixed number\\ of alternatives. Alternatives\\ include channel receive,\\ timeouts and skip.\end{tabular}
+        
+        \\ \hline
+        
+        \textbf{\begin{tabular}[c]{@{}l@{}}Threading\\ model\end{tabular}} &
+        \begin{tabular}[c]{@{}l@{}}M:N, hybrid threading model.\\ Support for multicore.\end{tabular} &
+        \begin{tabular}[c]{@{}l@{}}M:1, user threading model.\\ No support for multicore.\end{tabular}                                                      
     \end{tabular}
     \caption{Comparison of library features between ProXC++ and ProXC}
     \label{tab:library_features_comparison}
