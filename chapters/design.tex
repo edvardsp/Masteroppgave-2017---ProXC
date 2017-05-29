@@ -5,34 +5,72 @@
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\chapter{Design and Implementation}
-\label{ch:design_implementation}
-% each feature/
-
-This chapter describes in detail the design and implementation of ProXC++. This includes the runtime data structures used by the scheduler, and how the library features interact with the scheduler and the runtime environment.
-
-Note that the focus of this design and implementation is dynamic multithreading and multicore support. Features and details that has not much relevance to multithreading, such as replicators and C++ syntax, is detailed to a lesser extent.
-
-The library is written in C++, with standard C++14 dialect. The reader is expected to have a fair understanding of C++, and being familiar with standard C++11 dialect or newer is recommended. Detailed explanations of the C++ programming language is not presented here. Refer to any C++ reference (e.g. \citet{stroustrup2013c++}) for more details.
+\chapter{Design}
+\label{ch:design}
 
 
-\FloatBarrier
+First of all, ProXC++ is a concurrency library for C++. Only recently as of C++11 has the C++ programming language added concurrency primitives, such as threading and futures, to the standard library. However, C++ lacks any standard support for concurrency in user space. 
+
+Designing a concurrency library for C++ with dynamic multithreading requires some notion of user space threading mechanism, which in turn requires a runtime system. This runtime system acts as an invisible layer between the program and the operating system, handling resources and logistics of scheduling the different processes running in the program. 
+
+All library functionality, such as channels, builds upon the framework provided by the runtime system. Essentially, anything must be done via the runtime system, which is why the limitations of the runtime system functionality limits the potentiality of the library functionality.
+
+This chapter contains a full design of ProXC++, and explains some of the design choices. The runtime system is first designed, and subsequently the library features are designed based on the runtime system functionality. 
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Data Structures}
-% intrusive containers
-% concurrent queues
-% spinlocks
+\section{Runtime System}
 
 
-A set of data structures is commonly used by the runtime system. Apart from the C++ Standard Template Library (STL), the most notable data structures are \textit{intrusive containers}, \textit{concurrent queues}, and \textit{mutual exclusion locks}.
+Before discussing the design of the runtime system, lets first identify what the responsibilities of the runtime system are. A ProXC++ program contains a set of processes, where each process represents some point of execution. The runtime system must be able to spawn, schedule, and synchronize these processes, i.e. process management. A runtime scheduler could therefore be responsible for process management. 
 
-Intrusive containers, just as any other containers, stores some kind of data in some sort of way. The difference is how the container stores the necessary data used to organize the data. A non\hyp{}intrusive container is responsible for storing the necessary data, while for an intrusive container the elements are responsible for storing the necessary data. In other words, the element becomes ``aware'' of being a part of the intrusive container. Usually, intrusive containers are implemented with the elements having \textit{hooks} as data members. These hooks contains all the necessary data used by the intrusive container to store the elements. Intrusive containers offers better performance compared to non\hyp{}intrusive containers, as they minimize memory allocations and better memory locality.
+For a singlecore runtime system, only a single scheduler makes sense. However, how many schedulers are optimal for a dynamic multithreaded runtime system? Given the maximum number of parallel executions on a processor is equal to the number of available processor cores, the optimal number of schedulers is the number of available processor cores, and each scheduler runs on its own processor core. If more schedulers where online than available processor cores, situations would occur were multiple schedulers are struggling to run on the same processor core, which would be unproductive.
 
-Concurrent queues are queues which are safe to use concurrently, often denoted as \textit{thread safe}. The most common approach is taking a non\hyp{}thread safe queue and enforcing mutual exclusion around the critical regions. This approach however is not desirable, as it has very low throughput in multiprogrammed programs. Plenty of research \citep[e.g.][]{chase2005dynamic,le2013correct} has been devoted to creating non\hyp{}blocking queues (see \cref{sec:nonblocking_algorithms}) both available and efficient. Concurrent queues often differentiate between single or multiple producers and consumers. Producers are processes which insert elements into the queue, and consumers are processes which remove elements from the queue. The runtime system uses the variants \textit{single\hyp{}producer\hyp{}multiple\hyp{}consumer} (SPMC) queues and \textit{multiple\hyp{}producer\hyp{}single\hyp{}consumer} (MPSC) queues.
+Another important factor is how process management is shared among schedulers. Two principal strategies exists, namely \textit{centralized} or \textit{distributed} management. Given a centralized management, all schedulers share the same control structures, including a shared process queue for which processes are to be scheduled from. All schedulers share the responsibility for all processes in a program. Given a distributed management, all schedulers has a set of processes for which it has the responsibility of managing. Schedulers share nothing, essentially meaning all processes has a parent scheduler.
 
-Creating a complete non\hyp{}blocking system is most of the times impossible for a multiprogrammed programs. Sometimes resorting to mutual exclusion in critical regions is unavoidable. Different types of locks is suitable for different situations. Whether the lock is often contested, meaning multiple kernel\hyp{}threads are trying to acquire the lock simultaneously, and if the lock is held for a longer period of time or not, will affect the performance. \Citet[page 196--199]{brown2007c++csp2} performs a case study on different mutexes, describing various mutex algorithms and provides a benchmark and analysis of their performance. The conclusion from the case study is that for low contested, short\hyp{}term held mutexes, spinlocks yields best performance regarding low latency. 
+A centralized management is easy to implement, as the entire runtime system such as control structures and processes  is shared between schedulers. Schedulers does not have to worry about distributing processes for scheduling, as all processes are scheduled through the same queue. However, it does not scale as well with an increase in processor cores, as it creates contention between the increase in schedulers accessing the shared control structures. Distributed management is much harder to implement, as now each scheduler has its own set of control structures and processes. The main issue is how to efficiently distribute ready processes between schedulers. If done right, distributed management scales very well with an increase in processor cores.
 
-For multiprocessor architectures, the \textit{test\hyp{}and\hyp{}test\hyp{}and\hyp{}set} (TTAS) spinlock is generally favorable as it causes less memory contention than the standard spinlock. Instead of constantly trying to test\hyp{}and\hyp{}set the lock, it waits until the lock appears free. Different variants of the TTAS spinlock includes constant/exponential backoff during contention and cache friendly atomic operations.
+Given that ProXC++ aims to be a high\hyp{}performance concurrency library, distributed process management is necessary for catering to all multicore architectures.
+
+FIXME only on running at a time. cooperative scehduling.
+
+To summarize, the runtime systems consists of a number of schedulers equal to the number of available processor cores. Process management is distributed among the schedulers, meaning each scheduler has responsibility of a set of processes.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Scheduler}
+
+
+The scheduler is the core of the runtime system, providing the logic and control structures necessary for process management. Given a scheduler, a set of zero\hyp{}or\hyp{}more unique processes are said to be under the schedulers management. This scheduler is the \textit{parent scheduler} of said processes, which are called \textit{work processes}.
+
+A scheduler is either \textit{running} or \textit{idle}. A running scheduler has one\hyp{}or\hyp{}more work processes which are ready to be scheduled for execution, or simply called ready. When the scheduler runs out of ready work processes, it becomes idle.
+
+Ready work processes are stored in a process queue called the \textit{ready queue}. The scheduler uses the ready queue to determine whether it has ready work processes or not, i.e. an idle scheduler has an empty ready queue. When a scheduler has a non\hyp{}empty ready queue, a work process is removed from the ready queue and resumed execution. Scheduling and rescheduling a work process is the same as adding the process to the ready queue.
+
+A work process with a corresponding parent scheduler may spawn new work processes. These new processes are scheduled by the parent scheduler.
+
+Work processes may suspend, or sleep, until a given or derived time point. These processes are added to a \textit{sleep queue}. The scheduler will frequently examine the sleep queue and reschedule any work processes with an expired time point.
+
+Some work processes may suspend itself, waiting for other work processes to reschedule the suspended process. The suspending work process simply yields to the scheduler. Suspended processes are not stored in any queues, as other work processes will reschedule the suspended process rather than the scheduler. 
+
+The main challenge of the scheduler is how to distribute superfluous ready work processes to schedulers which are idle. Two principal strategies exist: \textit{work sharing} and \textit{work stealing}. Work sharing consists of manually distributing new work processes among the schedulers. Work stealing consists of stealing ready work from other schedulers when a scheduler runs out of ready work, i.e. becoming idle. 
+
+Work stealing is usually preferred over work sharing as it causes less process migration. Process migration is when management responsibility of a process is transferred between schedulers, or in other words the process changes its parent scheduler. Work stealing is however more complex to implement than work sharing, but scales much better on distributed multiprogrammed systems. Therefore, work stealing is employed as the load distribution strategy for the schedulers.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Processes}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Channels}
+
+
+\section{Alting}
+
+
+\section{Timers}
+
 
 
 \FloatBarrier

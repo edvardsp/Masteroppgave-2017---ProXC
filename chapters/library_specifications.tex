@@ -7,37 +7,39 @@
 \chapter{Library Specifications}
 \label{ch:library_specifications}
 
-This chapter introduces the library developed for this thesis. Details regarding design and implementation are presented in \cref{ch:design_implementation}
+
+This chapter introduces ProXC++, the library developed for this thesis. The specifications of ProXC++ includes a description of the feature set, the library API, target platforms and external dependencies. 
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Library Overview}
+\section{Library Description}
 \label{sec:library_overview}
-% API
-% features
 
-ProXC++ (pronounced ``proxy plus plus'') is a CSP\hyp{}influenced concurrency library for modern C++, specifically aimed at dynamic multithreading for multiprogrammed parallel programs. Modern C++ in this regard meaning support for C++14 standard and later. The central ambition of ProXC++ is to provide expressive and safe concurrency to C++ programs which fully and effectively utilizes available computational resources on multicore architectures.
+
+ProXC++ (pronounced ``proxy plus plus'') is a CSP\hyp{}influenced concurrency library for modern C++, specifically aimed at multiprogrammed parallel programs. Modern C++ in this regard meaning support for C++14 standard and later. The central ambition of ProXC++ is to provide expressive and safe concurrency to C++ programs which fully and effectively utilizes available computational resources on multicore architectures.
 
 ProXC++ is a runtime system using a hybrid threading model. Work stealing is employed for load balancing between the schedulers, each running on an available logical core. 
 
 Available concurrency primitives in ProXC++ are \textit{fork\hyp{}and\hyp{}join} parallelism, strict message\hyp{}passing, simultaneous event handling, and soft real\hyp{}time requirements.
 
-The name ``ProXC++'' is a continuation of the original library ProXC \citep{pettersen2016proxc}, where ProXC++ targets C++ in contrast to ProXC targeting C. Since ProXC++ aimed to be an improvement over ProXC, the ``\textit{plus plus}'' could also be viewed as an ``\textit{incremental better}'' library. This is of course only intended to be humorous, as I personally like ``\textit{plus plus}'' better than slapping a ``2'' at the end of the name.
+The name ``ProXC++'' is a continuation of the original library ProXC \citep{pettersen2016proxc}, where ProXC++ targets C++ in contrast to ProXC targeting C. Since ProXC++ aims to be an improvement over ProXC, the ``\textit{plus plus}'' could also be viewed as an ``\textit{incremental better}'' library. This is of course only intended to be humorous, as I personally like ``\textit{plus plus}'' better than slapping a ``2'' at the end of the name.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Library Features}
 \label{sec:library_features}
 
+
 The complete set of features in ProXC++ is as follows:
 
 \begin{itemize}[topsep=0em,itemsep=-1em,partopsep=0.5em,parsep=1em]
-    \item Multicore support
+    \item Multicore support by default
     \item Lightweight processes / threads
+    \item Per process handling via a seperate namespace
     \item Unidirectional, type\hyp{}safe, one\hyp{}to\hyp{}one synchronous channels
-    \item Parallel; fork\hyp{}and\hyp{}join parallelism on a set of processes
+    \item Parallelism; fork\hyp{}and\hyp{}join parallelism on a set of processes
     \item Replicators for parallel, generating dynamic number of parallel processes
-    \item Alternation; choice over multiple alternatives
+    \item Alting; choice over multiple alternatives
     \item Alternatives of types channel read, channel write, and timeouts on timers
     \item Alternatives guarded on a boolean value
     \item Replicators for alternation, generating dynamic number of choices
@@ -47,21 +49,38 @@ The complete set of features in ProXC++ is as follows:
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Library API}
+\label{sec:library_api}
+
+FIXME, cppreference style?
+
+Including ProXC++ in code requires including the header file \lstinline[style={CustomC++}]|#include <proxc.hpp>|. All API related types and methods resides in the \lstinline[style={CustomC++}]|proxc| namespace. 
+
+Lightweight process has the type \lstinline[style={CustomC++}]|Process|. The process constructor takes a function pointer and the corresponding arguments for the given function pointer. A process can be implicitly created with the \lstinline[style={CustomC++}]|proc| function. Or, an arbitrary number of processes can be implicitly created with the \lstinline[style={CustomC++}]|proc_for| function, which takes any pair of Process iterators of pre\hyp{}allocated processes, or an integer range and a function pointer and generates processes.
+
+Processes can be spawned in parallel with the \lstinline[style={CustomC++}]|parallel| function. The \lstinline[style={CustomC++}]|parallel| function takes one\hyp{}or\hyp{}more processes and runs them in a fork\hyp{}join model, meaning the calling processes will be suspended until all spawned processes has terminated.
+
+Each process can be directly handled through a set of functions in the \lstinline[style={CustomC++}]|this_thread| namespace, including process id, explicitly yielding, and explicit suspension for a given duration.
+
+Channels has the type \lstinline[style={CustomC++}]|Chan<T>|. The two channel ends, sending and receiving, has the types \lstinline[style={CustomC++}]|Chan<T>::Tx| and \lstinline[style={CustomC++}]|Chan<T>::Rx| respectively. Arbitrary number of channels can be created statically on the stack and dynamically on the heap. Statically created channels has the type \lstinline[style={CustomC++}]|ChanArr<T,N>|, and dynamically created channels has the type \lstinline[style={CustomC++}]|ChanVec<T>|. Both channel containers support indexing with brackets.
+
+Timers reside in the \lstinline[style={CustomC++}]|timer| namespace, and exists as the three types of timers \lstinline[style={CustomC++}]|Egg|, \lstinline[style={CustomC++}]|Repeat| and \lstinline[style={CustomC++}]|Date|. All timers can be constructed with the \lstinline[style={CustomC++}]|std::chrono| time points and durations.
+
+Waiting on multiple channel operations simultaneously can be achieved with alting. Alting has the type \lstinline[style={CustomC++}]|Alt|, which takes zero\hyp{}or\hyp{}more alternatives. These alternatives are created by function chaining appropriate methods on the alting object. Lastly, the \lstinline[style={CustomC++}]|Alt::select| method is called which waits and chooses a ready alternative.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Target Platforms}
 \label{sec:target_platforms}
 
-ProXC++ is mainly targeted for desktop environments, especially multicore architectures. However, it should support all platforms that has access to a C++14 compliant compiler and the Boost C++ libraries \citep{boost2017boost} as well as the Boost Context library \citep{kowalke2017boost} (as Boost is portable). ``\textit{Should}'' is used here, because ProXC++ is only tested on 64\hyp{}bit x86 Linux platform as of writing this thesis.
+
+ProXC++ is targeted for desktop environments, especially multicore architectures. However, it should support all platforms that has access to a C++14 compliant compiler and the Boost C++ libraries \citep{boost2017boost} as well as the Boost Context library \citep{kowalke2017boost} (as Boost is portable). ``\textit{Should}'' is used here, because ProXC++ is only tested on 64\hyp{}bit x86 Linux platform as of writing this thesis.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Dependencies}
 \label{sec:dependencies}
 
+
 ProXC++ uses a handful header\hyp{}only libraries from the Boost C++ libraries \citep{boost2017boost}, and the compiled library Boost Context \citep{kowalke2017boost} for portable and fast context switching between execution contexts. Boost Context is used as a foundation of the user\hyp{}thread implementation. As of why not rolling with a handwritten implementation of context switching, compared to ProXC, is with the simple reason of Boost Context being portable out of the box and writing context switching library is not the focus of this thesis.
 
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Influences}
-\label{sec:influences}
-
-FIXME
