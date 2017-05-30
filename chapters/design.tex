@@ -165,6 +165,25 @@ An channel alternative can either be selected \textit{actively} or \textit{passi
 \subsection{Work Stealing Algorithm}
 
 
+As each scheduler has their unique set of work processes, work stealing is employed to distribute superfluous work processes from a running scheduler to an idle scheduler. 
+
+The work stealing algorithm centers around the ready queue. As long as the scheduler has work processes in its ready queue, the scheduler will continue to resume work processes from the queue. However, when the ready queue becomes empty, the scheduler resort to work stealing. Work stealing goes as follows:
+
+\begin{enumeratefloat}
+\begin{enumerate}[topsep=0em,itemsep=-1em,partopsep=0.5em,parsep=1em]
+    \item \textbf{Select victim} -- another scheduler, called a victim, is randomly chosen.
+    \item \textbf{Try stealing} -- the current scheduler tries to steal some work processes from the victim. If failed, restart procedure;
+    \item \textbf{Resume work} -- else, the stolen work processes are stored in the ready queue, and a work process is resumed.
+\end{enumerate}    
+\caption{Observations for both non\hyp{}alting and alting channel ends.}
+    \label{list:conjecture_both}
+\end{enumeratefloat}
+
+As simple as the algorithm sounds, some details must be taken into consideration. Is it feasible for an idle scheduler to repeatedly retrying to steal work until it succeeds? Stealing a process is the same as process migration, and process migration does cause some overhead. Consider the following programs which has a few number of parallel processes or many dependent processes. An aggressive work stealing scheme would cause many unnecessary process migrations, compared to none for a singlecore runtime system. 
+
+To mitigate unnecessary process migrations by overaggressive work stealing, an idle scheduler can either wait for a short period of time before retrying, or it could wait until signaled by a scheduler with superfluous work processes. 
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Channel End Algorithm}
 
