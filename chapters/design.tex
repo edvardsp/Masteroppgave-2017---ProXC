@@ -9,7 +9,7 @@
 \label{ch:design}
 
 
-First of all, ProXC++ is a concurrency library for C++. Only recently as of C++11 has the C++ programming language added concurrency primitives, such as threading and futures, to the standard library. However, C++ lacks any standard support for concurrency in user space. 
+First of all, ProXC++ is a concurrency library for C++. Only recently as of C++11 has the C++ programming language added concurrency primitives to the standard library, such as threading and futures. However, C++ lacks any standard support for concurrency in user space. 
 
 Designing a concurrency library for C++ with dynamic multithreading requires some notion of user space threading mechanism, which in turn requires a runtime system. This runtime system acts as an invisible layer between the program and the operating system, handling resources and logistics of scheduling the different processes running in the program. 
 
@@ -22,7 +22,7 @@ This chapter contains a full design of ProXC++, and explains some of the design 
 \section{Runtime System}
 
 
-Before discussing the design of the runtime system, lets first identify what the responsibilities of the runtime system are. A ProXC++ program contains a set of processes, where each process represents some point of execution. The runtime system must be able to spawn, schedule, and synchronize these processes, i.e. process management. A runtime scheduler could therefore be responsible for process management. 
+Before discussing the design of the runtime system, lets first identify what the responsibilities of the runtime system are. A ProXC++ program contains a set of processes, where each process represents some point of execution. The runtime system must be able to spawn, schedule, and synchronize these processes, i.e. process management. A scheduler could therefore be responsible for process management. 
 
 For a singlecore runtime system, only a single scheduler makes sense. However, how many schedulers are optimal for a dynamic multithreaded runtime system? Given the maximum number of parallel executions on a processor is equal to the number of available processor cores, the optimal number of schedulers is the number of available processor cores, and each scheduler runs on its own processor core. If more schedulers where online than available processor cores, situations would occur were multiple schedulers are struggling to run on the same processor core, which would be unproductive.
 
@@ -31,8 +31,6 @@ Another important factor is how process management is shared among schedulers. T
 A centralized management is easy to implement, as the entire runtime system such as control structures and processes  is shared between schedulers. Schedulers does not have to worry about distributing processes for scheduling, as all processes are scheduled through the same queue. However, it does not scale as well with an increase in processor cores, as it creates contention between the increase in schedulers accessing the shared control structures. Distributed management is much harder to implement, as now each scheduler has its own set of control structures and processes. The main issue is how to efficiently distribute ready processes between schedulers. If done right, distributed management scales very well with an increase in processor cores.
 
 Given that ProXC++ aims to be a high\hyp{}performance concurrency library, distributed process management is necessary for catering to all multicore architectures.
-
-FIXME only on running at a time. cooperative scehduling.
 
 To summarize, the runtime systems consists of a number of schedulers equal to the number of available processor cores. Process management is distributed among the schedulers, meaning each scheduler has responsibility of a set of processes.
 
@@ -45,13 +43,9 @@ The scheduler is the core of the runtime system, providing the logic and control
 
 A scheduler is either \textit{running} or \textit{idle}. A running scheduler has one\hyp{}or\hyp{}more work processes which are ready to be scheduled for execution, or simply called ready. When the scheduler runs out of ready work processes, it becomes idle.
 
-Ready work processes are stored in a process queue called the \textit{ready queue}. The scheduler uses the ready queue to determine whether it has ready work processes or not, i.e. an idle scheduler has an empty ready queue. When a scheduler has a non\hyp{}empty ready queue, a work process is removed from the ready queue and resumed execution. Scheduling and rescheduling a work process is the same as adding the process to the ready queue.
+Ready work processes are stored in a process queue called the \textit{ready queue}. The scheduler uses the ready queue to determine whether it has ready work processes or not, i.e. an idle scheduler has an empty ready queue. When a scheduler has a non\hyp{}empty ready queue, a work process is removed from the ready queue and resumed execution. Scheduling and rescheduling a work process is equivalent with adding the process to the ready queue.
 
-A work process with a corresponding parent scheduler may spawn new work processes. These new processes are scheduled by the parent scheduler.
-
-Work processes may suspend, or sleep, until a given or derived time point. These processes are added to a \textit{sleep queue}. The scheduler will frequently examine the sleep queue and reschedule any work processes with an expired time point.
-
-Some work processes may suspend itself, waiting for other work processes to reschedule the suspended process. The suspending work process simply yields to the scheduler. Suspended processes are not stored in any queues, as other work processes will reschedule the suspended process rather than the scheduler. 
+As processes are scheduled in user space, the scheduler relies on \textit{cooperative scheduling}. Cooperative scheduling entails running processes voluntarily yielding running time to the scheduler. If a processes never yields to the scheduler, the process will run for ever. 
 
 The main challenge of the scheduler is how to distribute superfluous ready work processes to schedulers which are idle. Two principal strategies exist: \textit{work sharing} and \textit{work stealing}. Work sharing consists of manually distributing new work processes among the schedulers. Work stealing consists of stealing ready work from other schedulers when a scheduler runs out of ready work, i.e. becoming idle. 
 
@@ -62,173 +56,37 @@ Work stealing is usually preferred over work sharing as it causes less process m
 \subsection{Processes}
 
 
+Processes represent some point of execution. As stated above, all work processes has a parent scheduler which corresponds to the scheduler running on a particular processor core. A scheduler is also a process but differs from work processes, as a work process represents meaningful work from the running program. 
+
+A work process with a corresponding parent scheduler may spawn new work processes. These new processes are scheduled by the parent scheduler. A work process may also synchronize or join on other work processes, meaning waiting for the other work process to terminate. 
+
+Some work processes may suspend itself, waiting for other work processes to reschedule the suspended process. The suspending work process simply yields to the scheduler. Suspended processes are not stored in any queues, as other work processes will reschedule the suspended process rather than the scheduler. 
+
+Work processes may also suspend, or sleep, until a given or derived time point. These processes are added to the parent schedulers \textit{sleep queue}. The parent scheduler will frequently examine the sleep queue and reschedule any work processes with an expired time point. If a work process sleeps but is rescheduled by another work process before the time point is expired, the scheduler will reschedule and remove the waking process from the sleep queue.
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Channels}
-
-
-\section{Alting}
-
-
-\section{Timers}
+\section{Feature Design}
 
 
 
-\FloatBarrier
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Runtime System Overview}
-\label{sec:runtime_system_overview}
 
-The runtime system for ProXC++ is based on \textit{contexts}, which represent a point of computational execution. A context is a user\hyp{}thread, meaning it has its own program stack and processor context. A kernel\hyp{}thread always has a main context and a scheduler context, while it may have zero or more work contexts. Contexts are based on the hybrid threading model (see \cref{subsec:threading_models}).
-
-At startup, the initial main context creates $N-1$ kernel\hyp{}threads, given the processor has $N$ online logical cores. Each main context then creates a scheduler context, which represent the runtime environment for each kernel\hyp{}thread. Only the initial main context does any meaningful work, as the other main contexts only purpose is to spawn and join the scheduler context. Whenever the initial main context returns, the runtime environment will cleanup and shutdown. At the creation of a new kernel\hyp{}thread, along side with its main context and scheduler context, the scheduler will wait as idle (block) until available work is ready in other schedulers.
-
-\Cref{fig:runtime_overview} displays a rough outline of how the contexts, user\hyp{}threads and kernel\hyp{}threads are organized relative to each other. Note that even though work contexts are present in each kernel\hyp{}thread, it 
-
-\begin{figure}[h!]
-    \centering
-    \includegraphics[width=0.8\linewidth]{fig/runtime_overview}
-    \caption{Overview of the runtime system, with N online processor cores.}
-    \label{fig:runtime_overview}
-\end{figure}
-
-Work is distributed among schedulers through work stealing (see \cref{subsec:work_stealing}). This is achieved by each scheduler having a double\hyp{}ended queue (deque for short) containing ready work for that given scheduler. Whenever work is spawned by a scheduler, or idle work becomes ready, it is pushed onto the deque. This allows idle schedulers to try steal work and resume.
-
-
-\FloatBarrier
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Contexts}
-\label{subsec:contexts}
-
-The runtime system differentiates contexts in two categories: \textit{process vs. scheduler} and \textit{static vs. dynamic}.
-
-A process context represents a part of computation from the program, while the scheduler context is, as the name implies, the scheduler which is in control of scheduling the different process contexts. A static context is a context which cannot \textit{migrate} between schedulers, while a dynamic context can.
-
-For every kernel\hyp{}thread, there always exist a \textit{main context} and a \textit{scheduler context}. The main context is the context of the actual kernel\hyp{}thread, meaning the kernel\hyp{}thread returns when the main context returns. It is a process context, since it represents a part of the computation in the program, and a static context, since it cannot migrate between schedulers. It is undefined behaviour FIXME for main context to return (exit) on a kernel\hyp{}thread different from where it originated from, which is why the main context is static.
-
-The scheduler context is responsible for creating new work contexts, schedule between work contexts, and destroying finished work contexts. The scheduler is never visible to the programmer, and is the driving force behind the runtime environment. The scheduler is obviously a static context, as having multiple schedulers on the same kernel\hyp{}thread is unintuitive and unproductive.
-
-Besides the main and scheduler context, the rest of the program is composed by \textit{work contexts}. Work contexts are process contexts, but opposed to the main context, are dynamic instead of static. Being dynamic allows work contexts to migrate between schedulers. 
-
-Contexts are implemented using the Boost Context library \citep{kowalke2017boost}. Boost Context creates an abstraction over the execution state of a thread called \textit{execution context}, which includes stack and stack pointer, local variables, CPU registers and flags, and instruction pointer. The execution context allows transfer of control between other execution contexts, allowing to build higher level abstractions such as user\hyp{}threads. Execution contexts can also migrate between kernel\hyp{}threads.
-
-The context data structure is represented as a class, containing an execution context as well as a collection of flags, intrusive hooks, a wait queue, and a spinlock. The context class only acts as an information container for a given user\hyp{}thread, as most of the functionality of the context is implemented by the scheduler.
-
-\begin{figure}[h!]
-    \centering
-    \includegraphics[width=0.6\linewidth]{fig/context_states}
-    \caption{Finite state machine of context states and transitions.}
-    \label{fig:context_states}
-\end{figure}
-
-
-\FloatBarrier
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Processes}
-\label{subsec:processes}
-
-A concurrent program using ProXC++ consists of \textit{processes}, called \textit{proc} in code. These processes, same as in CSP, are independent points of execution, with each running sequential code. In code, a process is represented by a function and its corresponding arguments. When scheduled, the function is executed concurrently with the rest of the program, and exits when the function returns. 
-
-The process is no more than an opaque type to a context. The programmer implicitly creates new contexts through processes, while the scheduler under the hood operates on the contexts.
-
-Processes can be dynamically generated, either through explicitly creating a dynamic collection of processes or through use of replicators.
-
-% Talk more about single processes and replicated processes, how they are defiend, how they work etc.
-
-
-\FloatBarrier
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Scheduler}
-\label{subsec:scheduler}
-% work stealing
-% process create, schedule, join, destroy
-% process timeouts
-
-The scheduler is the corner piece of runtime system. It has the sole responsibility of managing the different contexts, including creating, scheduling, and destroying contexts. The scheduler runs as its own context, running in an scheduler loop until the program exits. Each spawned kernel\hyp{}thread contains a scheduler context, and the scheduler context never migrates to an another kernel\hyp{}thread. Each scheduler is the ``owner'' of one or more process contexts. ``Owning'' a context is synonymous with management; scheduling, inter\hyp{}process handling, and destroying the context when the corresponding process terminates. When a process is created, the scheduler residing on the same kernel\hyp{}thread ``owns'' that context. Only one scheduler can ``own'' a context at a time.
-
-A scheduler consists of context queues, scheduler functionality, and a scheduler context running an event loop.
-
-
-\FloatBarrier
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsubsection{Context Queues}
-
-Each scheduler has five queues: \textit{ready}, \textit{work}, \textit{sleep}, \textit{terminated}, and \textit{remote} queue. The ready queue holds the set of contexts ready to be scheduled, and is explained in more detail later. The work, sleep and terminated queue is managed only by a single scheduler, and is used to organize the processes the scheduler ``owns''. The work and terminated queues are intrusive doubly linked lists, while the sleep queue is a sorted, intrusive multiset\footnote{A multiset is an associative container that contains a set of objects, which allows multiple keys with the same values.}. The work queue is the total list of all processes the scheduler ``own''. The sleep queue contains all process which are suspended with a given timeout, and are sorted in ascending order. The terminated queue is the queue of all processes which has terminated. The need for this queue will be explained later. 
-
-The remote queue is a concurrent MPSC queue, where the managing scheduler is the consumer while any other schedulers are the producers. Whenever a scheduler readies a context and it does not ``own'' it, the context is placed in the remote queue to the ``owning'' scheduler. The ``owning'' scheduler transitions contexts in the remote queue to the ready queue. In essence, the remote queue is used to signal schedulers when their contexts are readied, since remote schedulers cannot safely access the ready queue.
-
-Now, back to the ready queue. The ready queue, as mentioned above, contains all contexts ready to be scheduled for a given scheduler. Only contexts the scheduler ``owns'' can be enlisted to the ready queue. From the schedulers point of view, the ready queue is a black box. Readied contexts are enqueued to the ready queue, and ready contexts are dequeued when scheduling a new context. How the contexts are stored internally and the policy of what order the contexts are dequeued is determined by the \textit{scheduling policy}. The default scheduling policy in ProXC++ is work stealing, however any other kind of policy could be implemented, such as work sharing and round robin.
-
-The work stealing scheduling policy is implemented as a concurrent double\hyp{}ended SPMC queue, using the design presented in \citet{chase2005dynamic,le2013correct} for efficient non\hyp{}blocking work stealing. The managing scheduler is the producer, while all schedulers are the consumers. The ready queue is responsible for load balancing work between the schedulers. From a schedulers point of view, it cannot tell if a dequeued ready context was stolen or not. It also cannot tell if other ready queues steals from its own ready queue. 
+\subsection{Timers}
 
 
-\FloatBarrier
+Three types of timers are available: \textit{egg}, \textit{repeat} and \textit{date} timer. Timers are used for either explicit process suspension, or for timeout on channel or alternation operations. 
+
+Egg timer is used for relative timeout. Just as an egg timer in real life, it is used to countdown for a specified period of time. It is not a one\hyp{}shot timer, meaning the same timer can be reused multiple times. The countdown begins at the start of an operation, effectively resetting the timer if already used.
+
+Repeat (or loop) timer is used for a periodic repeating timeout. The repeat timer will timeout in a periodic fashion, given a specified period of time. The timer only resets after timeout. Compared to the egg timer, the repeat timer is also not a one\hyp{}shot timer and can be reused, but the repeat timer does not reset the countdown at the start of an operation.
+
+Date timer is used for absolute timeout. It is a one\hyp{}shot timer, and will always be expired after timeout. The date timer timeouts at a specified time point. The timer can never be reset, and therefore survives multiple operations.
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsubsection{Scheduler Functionality}
-% framework
-% context switch data
-% context launch
-% context joining
-% context wait
-% context 
+\subsection{Fork\hyp{}Join Parallelism}
 
-Maybe the most important part of the scheduler is context management. The scheduler is responsible for creating new and destroying finished contexts, and 
-
-
-\FloatBarrier
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsubsection{Scheduler Event Loop}
-
-The scheduler event loop is the where the entirety of the scheduler context's lifetime executes in. The event loop consists of the following: check of exit flag, context cleanup, context transitions, and context scheduling. See \cref{lst:scheduler_event_loop} for pseudo code reference.
-
-\begin{lstfloat}
-\begin{lstlisting}[caption={Scheduler event loop pseudo code.}, label={lst:scheduler_event_loop}, style={CustomC}, xleftmargin={4em}]
-void scheduler_event_loop() {
-    while ( true ) {
-        // check exit flag and break if all workers have finished
-        if ( exit_flag ) {
-            scheduling_policy.notify();
-            if ( work_queue.empty() ) {
-                break;
-            }
-        }
-        // cleanup terminated contexts
-        cleanup_terminated();
-        // transition contexts to ready
-        transition_remote(); // remote -> ready
-        wakeup_sleep();      // sleep  -> ready
-        // schedule ready context if any else wait
-        context = scheduling_policy.dequeue();
-        if ( context != nullptr ) {
-            // scheduler must always be available
-            scheduling_policy.enqueue( scheduler_context );
-            // context switch to ready context
-            resume( context );
-            // scheduler is now running
-        } else {
-            // sleep until first sleeping context timeout
-            // or wait until notified
-            time_point = ( sleep_queue.empty() )
-                ? time_point_max
-                : sleep_queue.first() ;
-            scheduling_policy.suspend_until( time_point );
-        }
-    }
-    // scheduler is exiting, cleanup scheduler
-    scheduler_cleanup();
-    // lastly, context switch to main
-    resume( main_context );
-}
-\end{lstlisting}
-\end{lstfloat}
-
-
-
-
-
-\FloatBarrier
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Parallel Statement}
-\label{sec:parallel_statement}
 
 Processes can spawn new processes in parallel with the \textit{parallel} statement. The parallel statement takes one or more processes, either as single process statements or process replicators, and spawns and runs these processes in parallel. The spawned processes runs concurrently with any other processes currently running in the program. The parallel statement is the only way to spawn new processes with ProXC++.
 
@@ -245,127 +103,77 @@ The process calling the parallel statement is the parent process. When calling t
 
 The processes to be executed in parallel can be defined in two ways: either as a single process or as a replicated process. See \cref{subsec:processes} for a more detailed explanation of processes. 
 
-
-\FloatBarrier
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Parallel Implementation}
-\label{subsec:parallel_implementation}
-
-All relevant code for the parallel statement implementation can be found in the following files \texttt{parallel.hpp} and \texttt{process.hpp}.
-
-The parallel statement has two obvious phases: the fork and join phases. 
-
-During the fork phase, each process to be executed in parallel is spawned by the parent process, one by one. This involves creating the process, attaching the process to the current scheduler, and launching the process. Launching the process simply enqueues the process to the ready queue of the current scheduler. When all parallel process has been spawned, the parent process enters the join phase.
-
-The join phase consists of the parent process joining all parallel processes, one by one. Joining a process, which is an atomic operation, involves waiting until the process has terminated. One of two things happen when joining: either the process has not terminated and is still executing, or it has terminated. If the process has terminated, the parent process continues the join phase. If not, the parent process waits. When the process terminates, it will wake up the parent process.
-
-Pseudo code for the parallel implementation is presented in \cref{lst:parallel_statement_pseudo_code}.
-
-\begin{lstfloat}
-\begin{lstlisting}[caption={Parallel statement pseudo code.}, label={lst:parallel_statement_pseudo_code}, style={CustomC++}, xleftmargin={4em}]
-/* fork phase */
-for_each process in parallel_processes {
-    process.fork();
-}
-/* join phase */
-for_each process in parallel_processes {
-    process.join();
-}
-\end{lstlisting}
-\end{lstfloat}
-
-The parallel statement is quite simplistic, as it only enqueues new processes to the current scheduler and waits for their termination. Much of the simplicity comes from the lack of a \textit{sequential} statement, simplifying the design significantly. 
+\subsection{Channels}
 
 
-\FloatBarrier
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Timers}
-\label{sec:timers}
+Channels forms the only means of communication as well as synchronization between work processes via message\hyp{}passing. Given a channel, some type of message can be transmitted between a sender and a receiver.
 
-Three types of timers are available: \textit{egg}, \textit{repeat} and \textit{date} timer. Timers are used for either explicit process suspension, or for timeout on channel or alternation operations. 
+Hereafter, the term ``\textit{Tx}'' denotes a channel end for which a work process is sending on, and the term ``\textit{Rx}'' denotes a channel end for which a work process is receiving on. The term ``\textit{participant}'' denotes either a Tx or Rx.
 
-Egg timer is used for relative timeout. Just as an egg timer in real life, it is used to countdown for a specified period of time. It is not a one\hyp{}shot timer, meaning the same timer can be reused multiple times. The countdown begins at the start of an operation, effectively resetting the timer if already used.
+An synchronous channel implies both a Tx and a Rx must be at a channel to complete a channel operation, e.g. a Tx cannot transmit a message without a Rx ready to receive. If only one of the two required participants are ready to transmit, the participant must block (wait) until the other side is ready. This kind of behaviour is called \textit{rendezvous}. A synchronous channel is also unbuffered, given that no messages are stored intermediately in the channel.
 
-Repeat (or loop) timer is used for a periodic repeating timeout. The repeat timer will timeout in a periodic fashion, given a specified period of time. The timer only resets after timeout. Compared to the egg timer, the repeat timer is also not a one\hyp{}shot timer and can be reused, but the repeat timer does not reset the countdown at the start of an operation.
-
-Date timer is used for absolute timeout. It is a one\hyp{}shot timer, and will always be expired after timeout. The date timer timeouts at a specified time point. The timer can never be reset, and therefore survives multiple operations.
-
-
-\FloatBarrier
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Timer implementation}
-\label{subsec:timer_implementation}
-
-All relevant code for the timer implementation can be found in the following file \texttt{timer.hpp}.
-
-Timers are represented through a common abstract class interface, shown in \cref{lst:timer_class_interface}. Instances of an egg or repeat timer converts the specified time duration to a time point, while the date timer already specifies a time point. This time point is stored in the base interface class. All timers support duration and time points from the standard library \texttt{std::chrono}.
-
-\begin{lstfloat}
-\begin{lstlisting}[caption={Timer class interface.}, label={lst:timer_class_interface}, style={CustomC++}, xleftmargin={4em}]
-class timer::Interface {
-protected:
-    using TimePointT = /* implementation defined */;
-    TimePointT time_point_;
-public:
-    virtual void reset() = 0;
-    virtual bool expired() = 0;
-    bool operator<( Interface const & other ) const 
-    { return time_point_ < other.time_point_; }
-    TimePointT const & get() const { return time_point_; }
-};
-\end{lstlisting}
-\end{lstfloat}
-
-When a timer is supplied for a timed operation, the reset method is called. For the egg timer, a reset results in calculating new time point. For the repeat timer, the next periodic time point is calculated if expired, else the time point remains the same.
-
-For some operations, such as alternation, multiple timers can be supplied. Since timers have a static time point after reset, the closest time point is chosen for timeout.
-
-Under the hood, an explicit process suspension with a given timer is simply enlisting the context to the scheduler sleep queue with the corresponding time point. When the time point is reached, the scheduler removes the context from the sleep queue and is rescheduled. The time point is checked by the scheduler context in the \texttt{wakeup\_sleep()} method. If the time point has already reached when suspending the process, it immediately returns. 
-
-A timed operation differs slightly. Whenever the context waits for some event during the operation, the context is enlisted in the scheduler sleep queue. Now, one of two things may happen: either the context is rescheduled by some event, or the operation times out and is rescheduled by the scheduler. If the context was rescheduled by the event, the scheduler removes the context from the sleep queue and is enqueued in the ready queue. If the time point expires, the scheduler transitions the context from the sleep queue to the ready queue in the \texttt{wakeup\_sleep()} procedure. Either way, the context is removed from the sleep queue and enqueued in the ready queue.
-
-Note that if the context is rescheduled by a remote event, the context is enlisted in the remote queue first, but it is not removed from the sleep queue. Its not until the scheduler transitions the context from remote to ready during the \texttt{transition\_remote()} procedure the context is removed from the sleep queue.
-
-
-\FloatBarrier
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Channels}
-\label{sec:channels}
-
-Channels forms the only means of communication as well as synchronization between processes via message\hyp{}passing. Given a channel, some type of message can be transmitted between a sender and a receiver.
-
-Hereafter, the term ``\textit{Tx}'' denotes a process sending on a channel, and the term ``\textit{Rx}'' denotes a process receiving on a channel. The term ``\textit{participant}'' denotes either a Tx or Rx.
-
-An synchronous channel implies both a Tx and a Rx must be at the channel to complete the channel operation, e.g. a Tx cannot transmit a message without a Rx ready to receive. If only one of the two required participants are ready to transmit, the participant must block (wait) until the other side is ready. This kind of behaviour is called rendezvous. A synchronous channel is also unbuffered, given that no messages are stored intermediately in the channel.
-
-The opposite of a synchronous, unbuffered channels are asynchronous, buffered channels, where messages are buffered if there are no receivers ready. Tx never waits regardless of a ready Rx or not, while Rx must only wait if the buffer is empty. See \cref{fig:channel_sync_async} for an illustration of the difference between a synchronous and asynchronous channel.
+The opposite of a synchronous, unbuffered channels are asynchronous, buffered channels, where messages are buffered if there are no receivers ready. Tx never waits regardless of a ready Rx or not, while Rx must only wait if the buffer is empty. See \cref{fig:channel_sync_async} for an illustration of the difference between synchronous and asynchronous channels.
 
 \begin{figure}[h!]
     \centering
-    \includegraphics[width=0.9\linewidth]{fig/channel_sync_async}
+    \includegraphics[width=1\linewidth]{fig/channel_sync_async}
     \caption{Different configurations of synchronous and asynchronous channel communication.}
     \label{fig:channel_sync_async}
 \end{figure}
 
-A unidirectional channel only allows messages to be transmitted in one direction. In contrast, a bidirectional channel allows messages to be transmitted in both directions.
+Synchronous channels are usually preferred over asynchronous channels, as it is more deterministic. When a channel operation is completed, both participants know the opposite participant is in a particular state. This is not the case for asynchronous channels. Regarding memory use, synchronous channels always require constant memory while asynchronous channels has to allocate memory for its buffer.
+
+A unidirectional channel only allows messages to be transmitted in one direction. In contrast, a bidirectional channel allows messages to be transmitted in both directions. Unidirectional channels are more restrictive than bidirectional channels. The argument for unidirectional channels is for bidirectional channel it is possible for both participants to disagree which direction a channel transmission is. The direction of a channel transmission for a unidirectional channel is always given.
 
 Some channel design has the concept of limiting how many unique processes can access and use a channel. This concept is called \textit{disjointness rules} in XC \citep{douglas2009programming} and \textit{usage rules} in occam \citep{barrett1992occam}. In essence, these ``rules'' specify if either end of a channel, sending and receiving, can only be used by a unique process or any processes. Usually denoted by \textit{one/any\hyp{}to\hyp{}one/any}, this gives the four configurations: \textit{one\hyp{}to\hyp{}one}, \textit{one\hyp{}to\hyp{}any}, \textit{any\hyp{}to\hyp{}one}, and \textit{any\hyp{}to\hyp{}any}. Both XC and occam follows the one\hyp{}to\hyp{}one design.
 
 Ensuring both Tx and Rx agrees on the type of message being transmitted has to do with \textit{type safety}. If both participants of a channel operations disagrees in the type of the transmitted message, a \textit{type error} occurs. Type safety is therefore to discourage or prevent type errors. It is obviously desirable for a type safe channel, but it is highly dependent on support from either the programming language or the compiler to enforce type safety. A compromise is size safe channels, where both participants agree on the size of the message rather than the type. Size safety is not as desirable as type safety, but is much more doable to enforce.
 
+Considering the different channel factors above, channels in ProXC++ are synchronous and unbuffered, unidrectional, one\hyp{}to\hyp{}one and type safe.
 
-\FloatBarrier
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Channel Algorithm}
-\label{subsec:channel_algorithm}
+\subsection{Alting}
 
-The channel algorithm is different whether the channel end is alting or not. A set of conjectures is postulated in \cref{list:conjecture_both,list:conjecture_nonalting,list:conjecture_alting} to form the basis of the channel algorithm.
+
+Alternation is a construct allowing to wait on multiple alternatives simultaneously, selecting an alternative when one or more alternatives are ready. Each alternative has an optional corresponding block of code (closure) which is executed if chosen. Alternatives can also be guarded by a boolean value, enabling or disabling certain alternatives on certain conditions. These boolean guards are evaluated at the initialization of the alternation procedure.
+
+Three types of alternatives exists: channel operations, timers, and skip. Channel operation alternatives include both sending and receiving.
+
+The alternation procedure works as follows: at initialization, zero or more alternatives are enabled for selection. Each enabled alternative is checked if ready to synchronize. If one or more alternatives are ready, one is selected. If none are ready, the alternation procedure suspends and waits for the first alternative to become ready. This first ready alternative is automatically selected. When the alternation procedure has selected an alternative, the corresponding closure is executed if present.
+
+The alternatives operates, when enabled, as follows:
+
+\begin{enumerate}[topsep=0em,itemsep=-1em,partopsep=0.5em,parsep=1em]
+    \item \textbf{Channel operation} -- specifies a channel send or receive. A channel send is accompanied with the item to transmit, while a channel receive can optionally capture the received item in the alternative closure. The alternative becomes ready when the opposite side of the channel operation is present.
+    \item \textbf{Timeout} -- is a timer with a corresponding timeout. If the alternation process has not selected an alternative before timeout, the timer alternative is selected.
+    \item \textbf{Skip} -- is an alternative which is always ready. It can be compared to the \texttt{default} case in switch cases. If no alternatives are ready at the alternation initialization, the skip alternative is selected. 
+\end{enumerate}
+
+Multiple channel alternatives can be enabled for an alternation procedure. Multiple timer alternatives can also be enabled for an alternation procedure, however only the timer with the shortest deadline will be registered. If multiple skip alternatives are enabled, only the first skip alternative is registered.
+
+An channel alternative can either be selected \textit{actively} or \textit{passively}. Actively selecting involves the alternation procedure performing the selection, while passively selecting involves external events performing the selection. A channel alternative can also only be selected after being entered. Entering a channel alternative is essentially registering the interest of the alternation procedure to perform the channel operation. Leaving a channel alternative performs the opposite, unregistering this interest.
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Runtime Algorithms}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Work Stealing Algorithm}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Channel End Algorithm}
+
+
+The channel algorithm is different whether the channel end is alting or not. A set of observations are postulated in \cref{list:conjecture_both,list:conjecture_nonalting,list:conjecture_alting} to form the basis of the channel algorithm.
 
 \FloatBarrier
 
 \begin{enumeratefloat}
-    \caption{Conjectures for both non\hyp{}alting and alting channel ends.}
-    \label{list:conjecture_both}
     \begin{enumerate}[topsep=0em,itemsep=-1em,partopsep=0.5em,parsep=1em]
         \item A channel operation consists of a single Tx and a single Rx arriving in either sequential order, both of which can be alting or non\hyp{}alting.
         \item When a channel end has arrived for a channel operation, another channel end of same type cannot arrive before that channel operation has completed.
@@ -374,31 +182,33 @@ The channel algorithm is different whether the channel end is alting or not. A s
         \item If a channel end is suspended during a non\hyp{}timed channel operation, it is only rescheduled if the channel operation completed or the channel closed.
         \item During a timed channel operation, a suspended channel end may also be rescheduled if a timeout occurs.
     \end{enumerate}
+    \caption{Observations for both non\hyp{}alting and alting channel ends.}
+    \label{list:conjecture_both}
 \end{enumeratefloat}
 
 \begin{enumeratefloat}
-    \caption{Conjectures for non\hyp{}alting channel ends.}
-    \label{list:conjecture_nonalting}
     \begin{enumerate}[topsep=0em,itemsep=-1em,partopsep=0.5em,parsep=1em]
         \item The non\hyp{}alting channel end arriving first at an channel operation will always suspend.
         \item The channel end arriving last at an channel operation will never suspend.
         \item A process holding both channel ends for a channel will always block indefinitely if operating on the given channel.
         \item A channel end never leaves the channel operation after arrival unless it completes, the channel closes, or times out, i.e. a channel end always commits to a channel operation.
     \end{enumerate}
+    \caption{Observations for non\hyp{}alting channel ends.}
+    \label{list:conjecture_nonalting}
 \end{enumeratefloat}
 
 \begin{enumeratefloat}
-    \caption{Conjectures for alting channel ends.}
-    \label{list:conjecture_alting}
     \begin{enumerate}[topsep=0em,itemsep=-1em,partopsep=0.5em,parsep=1em]
         \item A channel end never explicitly suspends during a channel operation. This is done indirectly by the alting procedure.
         \item A channel end may leave the channel operation after arrival and return later, i.e. a channel end may not commit to a channel operation.
     \end{enumerate}
+    \caption{Observations for alting channel ends.}
+    \label{list:conjecture_alting}
 \end{enumeratefloat}
 
 \FloatBarrier
 
-A key observation to make from the conjectures is the symmetry of a channel operation. It is invariant Tx or Rx is completing the operation. This makes the algorithm very much the same for both sending and receiving on a channel. Another observation to make is how non\hyp{}alting channel ends commit, while alting channel ends may not commit. This skew in committal channel ends allows for important assumptions in the algorithm.
+A key observation to make from the observations in \cref{list:conjecture_both,list:conjecture_nonalting,list:conjecture_alting} is the symmetry of the channel operation; it is invariant whether Tx or Rx is completing the operation. This makes the algorithm very much the same for both sending and receiving on a channel. Another observation to make is how non\hyp{}alting channel ends commit, while alting channel ends may not commit. This skew in committal channel ends allows for important assumptions in the algorithm.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -465,92 +275,10 @@ The synchronization procedure in step \ref{step:self_lower_rank} is a little mor
 The synchronization procedure in step \ref{step:self_higher_rank} is more straightforward. If synchronization is offered, complete the transmission and accept. If it is not offered, check the alting procedure state. If the alting procedure state is checking, try later. If the state is waiting, try normal selection. 
 
 
-\FloatBarrier
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Channel Implementation}
-\label{subsec:channel_implementation}
+\subsection{Alting Algorithm}
+\label{subsec:alting_algorithm}
 
-All relevant code for channel implementation is found in the file \texttt{channel.hpp} and all files within the folder \texttt{channel/}.
-
-In ProXC++, channels exist in one flavour: synchronous and unbuffered, unidirectional, one\hyp{}to\hyp{}one, and type safe. All channel related objects and methods reside in the \texttt{channel} namespace.
-
-Channels are composed of the two channel end objects \texttt{Tx<T>} and \texttt{Rx<T>}. \texttt{Tx<T>} and \texttt{Rx<T>} can send and receive on a channel, respectively. Channels can only be created through the functions \texttt{create<T>()} for single channel objects, or \texttt{create\_n<T>()} for $n$ channel objects, \cref{lst:channel_create_functions} for reference. 
-
-Channel operations, alting or not, can be timed with a timer. Both sending and receiving channel ends can be used in alternation, compared to occam and XC which only permits receiving channel ends.
-
-Channels can be closed. When a channel is closed, no more channel operations can be completed on the given channel. Closing a channel cannot be undone. A channel closes when either one of the channel ends goes out of scope, or one the channel ends explicitly closes the channel.
-
-\begin{lstfloat}
-\begin{lstlisting}[caption={Channel create functions.}, label={lst:channel_create_functions}, style={CustomC++}, xleftmargin={4em}]
-template<typename T>
-std::tuple< Tx<T>, Rx<T> > create();
-template<typename T>
-std::tuple< std::vector< Tx<T> >, 
-            std::vector< Rx<T> >
-> create_n(std::size_t n);
-\end{lstlisting}
-\end{lstfloat}
-
-\texttt{std::tuple} is used instead of \texttt{std::pair} because \texttt{std::tuple} has better support for metaprogramming, and inline variable definitions are possible with structured bindings in C++17, e.g. \cref{lst:channel_structured_bindings}.
-
-\begin{lstfloat}
-\begin{lstlisting}[caption={Creating channels with structured bindings.}, label={lst:channel_structured_bindings}, style={CustomC++}, xleftmargin={4em}]
-// until c++17
-channel::Tx<int> tx;
-channel::Rx<int> rx;
-std::tie(tx, rx) = channel::create<int>();
-// after c++17
-auto [ tx, rx ] = channel::create<int>();
-\end{lstlisting}
-\end{lstfloat}
-
-Channel ends are movable but non\hyp{}copyable, meaning channel ends must explicitly pass ownership between scopes. As each process in itself is an independent running scope, channel ends being non\hyp{}copyable ensures only one process holds or owns a channel end at any given time. If a process where to pass a channel end to another process, the ownership of the given channel end must be moved.
-
-Channel ends are no more than class object holding a shared pointer to the actual channel object. A shared pointer is a smart pointer which shares ownership to a dynamically allocated object between multiple owners, and which deallocates the object when all owners releases ownership. Channel objects are of type \texttt{ChannelImpl<T>} which contains the entire implementation. Whenever a channel is to be created, a channel object is dynamically allocated with the shared pointer \texttt{std::shared\_ptr<T>}. Additionally, channel ends defines its interface by restricting access to the channel object.
-
-The channel object represents internally each channel end as a struct. This struct contains the context of the calling process, reference to the item being sent or where to store the received item, and pointer to the alternation choice if used in an alternation procedure. See \cref{lst:channel_end_representation} for reference. 
-
-\begin{lstfloat}
-\begin{lstlisting}[caption={Channel end representation in channel object.}, label={lst:channel_end_representation}, style={CustomC++}, xleftmargin={4em}]
-template<typename ItemT>
-struct ChanEnd {
-    Context   * ctx_;
-    ItemT     & item_;
-    AltChoice * alt_choice_;
-};
-\end{lstlisting}
-\end{lstfloat}
-
-The following data members are present in a channel object: A spinlock. Atomic boolean value indicating if the channel is closed or not. An atomic pointer to a channel end struct (\cref{lst:channel_end_representation}), each for Tx and Rx. An atomic boolean used to indicate if an channel end item was consumed by an another channel end or not, each for Tx and Rx. And lastly, an atomic enum used to synchronize between two alting channel ends.
-
-
-\FloatBarrier
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Alternation}
-\label{sec:alternation}
-
-Alternation is a construct allowing to wait on multiple alternatives simultaneously, selecting an alternative when one or more alternatives are ready. Each alternative has an optional corresponding block of code (closure) which is executed if chosen. Alternatives can also be guarded by a boolean value, enabling or disabling certain alternatives on certain conditions. These boolean guards are evaluated at the initialization of the alternation procedure.
-
-Three types of alternatives exists: channel operations, timers, and skip. Channel operation alternatives include both sending and receiving.
-
-The alternation procedure works as follows: at initialization, zero or more alternatives are enabled for selection. Each enabled alternative is checked if ready to synchronize. If one or more alternatives are ready, one is selected. If none are ready, the alternation procedure suspends and waits for the first alternative to become ready. This first ready alternative is automatically selected. When the alternation procedure has selected an alternative, the corresponding closure is executed if present.
-
-The alternatives operates, when enabled, as follows:
-
-\begin{enumerate}[topsep=0em,itemsep=-1em,partopsep=0.5em,parsep=1em]
-    \item \textbf{Channel operation} -- specifies a channel send or receive. A channel send is accompanied with the item to transmit, while a channel receive can optionally capture the received item in the alternative closure. The alternative becomes ready when the opposite side of the channel operation is present.
-    \item \textbf{Timeout} -- is a timer with a corresponding timeout. If the alternation process has not selected an alternative before timeout, the timer alternative is selected.
-    \item \textbf{Skip} -- is an alternative which is always ready. It can be compared to the \texttt{default} case in switch cases. If no alternatives are ready at the alternation initialization, the skip alternative is selected. 
-\end{enumerate}
-
-Multiple channel alternatives can be enabled for an alternation procedure. Multiple timer alternatives can also be enabled for an alternation procedure, however only the timer with the shortest deadline will be registered. If multiple skip alternatives are enabled, only the first skip alternative is registered.
-
-An channel alternative can either be selected \textit{actively} or \textit{passively}. Actively selecting involves the alternation procedure performing the selection, while passively selecting involves external events performing the selection. A channel alternative can also only be selected after being entered. Entering a channel alternative is essentially registering the interest of the alternation procedure to perform the channel operation. Leaving a channel alternative performs the opposite, unregistering this interest.
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Alternation Algorithm}
-\label{subsec:alternation_algorithm}
 
 The alternation algorithm works in three phases: \textit{checking}, \textit{waiting}, and \textit{completing} phase. The waiting phase is only entered if the checking phase results in no selected alternatives.
 
@@ -565,63 +293,4 @@ Note that if any channel alternatives becomes ready after it has been checked by
 Given a number of channel alternatives are ready during the checking phase, each alternative must be resolved before continuing to the waiting or completing phase. Resolving a channel alternative involves trying to complete the channel operation, which either results in a success or fail. The first channel alternative which results in a success short\hyp{}circuits the selection order and continues to the completing phase. However, an alt\hyp{}to\hyp{}alt channel operation has a slightly larger overhead because of alt\hyp{}to\hyp{}alt synchronization, which means trying to complete the channel operation may result in a try\hyp{}later result. A try\hyp{}later result means the alt\hyp{}to\hyp{}alt synchronization cannot be resolved right now, and must be tried later. The selection order therefore skips the alternative and tries later. All channel alternatives must be resolved failed before continuing to the waiting phase.
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Alternation Implementation}
-\label{subsec:alternation_implementation}
 
-All relevant code is found in the files \texttt{alt.hpp} and \texttt{alt.cpp}, and all files within the folder \texttt{alt/}.
-
-The alting procedure is implemented as a class object, which is allocated on the stack. The channel alternative is composed into two different channel alternative objects, each for the sending and receiving case. Both alternative objects have inherit from a common abstract class interface. The timer and skip alternative is both allocated as a data member in the alting object. 
-
-After creating an alting object, alternatives can be created by chaining function calls to the alting object. The four functions \texttt{send}, \texttt{recv}, \texttt{timeout} and \texttt{skip} creates a channel send, channel receive, timeout and skip alternative, respectively. The channel alternative functions has a corresponding replicator function for creating dynamic number of channel alternatives over a dynamic number of channel ends These are called \texttt{send\_for} and \texttt{recv\_for}. All alternative creating functions also has an corresponding guarded function, which is the function name with \texttt{\_if} appended, e.g. \texttt{send\_if}. Lastly, the function call \texttt{select} performs the alting procedure and consumes the alting object in the process. The \texttt{select} function call is always last. See \cref{lst:code_example_alting} for a code example.
-
-\begin{lstfloat}
-\begin{lstlisting}[caption={Code example of alting.}, label={lst:code_example_alting}, style={CustomC++}]
-Alt()                           // creates alting object
-    .send(tx, item)             // w/o guard, w/o closure
-    .recv_if(cond1, rx)         // w   guard, w/o closure
-    .timeout(timer, [](){})     // w/o guard, w   closure
-    .skip_if(cond2, &some_func) // w   guard, w   closure
-    /* more alternatives can be inserted here */
-    .select();                  // selects an alternative
-\end{lstlisting}
-\end{lstfloat}
-
-All of the channel alternative functions simply generate and store alternatives in the alting object. However, some additional care has to be taken into consideration. Multiple alternatives can be created on the same channel end. If this is the case, then the alting object chooses one at random which is used during the alting procedure. If both ends of the same channel is detected as alternatives, then all alternatives for that channel is discarded.
-
-Timeout alternatives are stored as a single entry in the alting object. Whenever a timeout alternative is created, the timeout period is checked against the current timeout period, initialized to maximum value. If the timeout period is lower than the current one, the new timeout alternative is swapped in place.
-
-Skip alternatives are stored as a single entry in the alting object. Compared to the timeout alternative, only the first skip alternative is stored. All subsequent skip alternatives are discarded.
-
-The alting object uses a spinlock to enforce active and passive selection. An atomic flag and a pointer is used to set the ``winner'' of the selection. During the checking phase, the alting object holds the spinlock. If the alting procedure actively selects an alternative, the atomic flag is set and the pointer is set accordingly. Only after alting procedure continues to the waiting or completing phase is the spinlock released. Any alternative that becomes ready during the checking phase and tries to select passively must acquire the alting spinlock first. This allows the alting procedure to enforce all alternatives trying to passively select to wait until the waiting or completing phase. 
-If the alting procedure enters the waiting phase, the alting procedure suspends itself and the lock is released. The first alternative to acquire the lock and set the atomic flag is allowed to set the winner pointer. This alternative also reschedules the alting procedure. 
-
-\begin{lstfloat}
-\begin{lstlisting}[caption={Code example of alting.}, label={lst:active_alting}, style={CustomC}]
-lock = spinlock.aquire();
-ready_selected = checking_phase();
-winner = if ! ready_selected {
-    if skip { skip_alternative }
-    else {
-        // atomically suspend and release lock
-        timeout = scheduler.alt_wait( lock );
-        if timeout { timeout_alternative }
-        else       { channel_alternative }
-    }
-} else { ready_alternative };
-completing_phase(winner);
-\end{lstlisting}
-\end{lstfloat}
-
-\begin{lstfloat}
-\begin{lstlisting}[caption={Code example of alting.}, label={lst:passive_alting}, style={CustomC}]
-lock = spinlock.aquire();
-if ! alt.atomic_flag.test_and_set() { return false; }
-alt.winner = channel_alternative;
-scheduler.reschedule(alt.context);
-return true;
-\end{lstlisting}
-\end{lstfloat}
-
-% FIXME uniform random distribution
-% FIXME fairness vs determinism

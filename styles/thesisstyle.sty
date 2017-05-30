@@ -20,6 +20,7 @@
 \usepackage[export]{adjustbox}
 \linespread{1.5}
 \usepackage{float}
+\usepackage{chngcntr}
 
 
 \usepackage{caption}           % Use table caption
@@ -53,6 +54,8 @@
 \hyphenation{si-mul-ta-neous-ly}
 \hyphenation{se-lect-ing}
 \hyphenation{spawn-ed}
+\hyphenation{syn-chro-nous}
+\hyphenation{a-syn-chro-nous}
 
 % custom commands
 
@@ -62,6 +65,7 @@
 
 \newfloat{enumeratefloat}{htbp}{lop}
 \floatname{enumeratefloat}{List}
+\counterwithin{enumeratefloat}{chapter}
 
 % listings with styles
 
