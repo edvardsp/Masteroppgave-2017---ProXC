@@ -130,6 +130,8 @@ Some channel design has the concept of limiting how many unique processes can ac
 
 Ensuring both Tx and Rx agrees on the type of message being transmitted has to do with \textit{type safety}. If both participants of a channel operations disagrees in the type of the transmitted message, a \textit{type error} occurs. Type safety is therefore to discourage or prevent type errors. It is obviously desirable for a type safe channel, but it is highly dependent on support from either the programming language or the compiler to enforce type safety. A compromise is size safe channels, where both participants agree on the size of the message rather than the type. Size safety is not as desirable as type safety, but is much more doable to enforce.
 
+
+
 Considering the different channel factors above, channels in ProXC++ are synchronous and unbuffered, unidrectional, one\hyp{}to\hyp{}one and type safe.
 
 

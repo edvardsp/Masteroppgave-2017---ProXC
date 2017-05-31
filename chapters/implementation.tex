@@ -12,82 +12,190 @@
 The library is written in C++, with standard C++14 dialect. The reader is expected to have a fair understanding of C++, and being familiar with standard C++11 dialect or newer is recommended. Detailed explanations of the C++ programming language is not presented here. Refer to any C++ reference (e.g. \citet{stroustrup2013c++}) for more details.
 
 
-\FloatBarrier
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Data Structures}
+\label{sec:data_structures}
 
 
 A set of data structures is commonly used by the runtime system. Apart from the C++ Standard Template Library (STL), the most notable data structures are \textit{intrusive containers}, \textit{concurrent queues}, and \textit{mutual exclusion locks}.
 
-Intrusive containers, just as any other containers, stores some kind of data in some sort of way. The difference is how the container stores the necessary data used to organize the data. A non\hyp{}intrusive container is responsible for storing the necessary data, while for an intrusive container the elements are responsible for storing the necessary data. In other words, the element becomes ``aware'' of being a part of the intrusive container. Usually, intrusive containers are implemented with the elements having \textit{hooks} as data members. These hooks contains all the necessary data used by the intrusive container to store the elements. Intrusive containers offers better performance compared to non\hyp{}intrusive containers, as they minimize memory allocations and better memory locality.
 
-Concurrent queues are queues which are safe to use concurrently, often denoted as \textit{thread safe}. The most common approach is taking a non\hyp{}thread safe queue and enforcing mutual exclusion around the critical regions. This approach however is not desirable, as it has very low throughput in multiprogrammed programs. Plenty of research \citep[e.g.][]{chase2005dynamic,le2013correct} has been devoted to creating non\hyp{}blocking queues (see \cref{sec:nonblocking_algorithms}) both available and efficient. Concurrent queues often differentiate between single or multiple producers and consumers. Producers are processes which insert elements into the queue, and consumers are processes which remove elements from the queue. The runtime system uses the variants \textit{single\hyp{}producer\hyp{}multiple\hyp{}consumer} (SPMC) queues and \textit{multiple\hyp{}producer\hyp{}single\hyp{}consumer} (MPSC) queues.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Intrusive Containers and Pointers}
 
-Creating a complete non\hyp{}blocking system is most of the times impossible for a multiprogrammed programs. Sometimes resorting to mutual exclusion in critical regions is unavoidable. Different types of locks is suitable for different situations. Whether the lock is often contested, meaning multiple kernel\hyp{}threads are trying to acquire the lock simultaneously, and if the lock is held for a longer period of time or not, will affect the performance. \Citet[page 196--199]{brown2007c++csp2} performs a case study on different mutexes, describing various mutex algorithms and provides a benchmark and analysis of their performance. The conclusion from the case study is that for low contested, short\hyp{}term held mutexes, spinlocks yields best performance regarding low latency. 
+
+Intrusive containers, just as any other containers, stores some kind of data in some sort of way. The difference is how the container stores the necessary data used to organize the data. A non\hyp{}intrusive container is responsible for storing the necessary data, while for an intrusive container the elements are responsible for storing the necessary data. In other words, the element becomes ``aware'' of being a part of the intrusive container. Usually, intrusive containers are implemented with the elements having \textit{hooks} as data members. These hooks contains all the necessary data used by the intrusive container to store the elements. 
+
+An intrusive pointer is the intrusive equivalent of a smart pointer with shared ownership, releasing a dynamically allocated object when all owners have released the pointer. The owner counter is stored in the object rather in the pointer.
+
+Intrusive containers and pointers offers better performance compared to non\hyp{}intrusive containers, as they minimize memory allocations and better memory locality. Intrusive containers and pointers are however much less maintainable, and are much harder to modularize.
+
+Boost Intrusive containers and Boost Intrusive pointers are used as the implementation of intrusive containers and pointers.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Concurrent Queues}
+
+
+Concurrent queues are queues which are safe to use concurrently, often denoted as \textit{thread safe}. The most common approach is taking a non\hyp{}thread safe queue and enforcing mutual exclusion around the critical regions. This approach however is not desirable, as it has very low throughput in multiprogrammed programs.
+
+Concurrent queues often differentiate between single or multiple producers and consumers. Producers are processes which insert elements into the queue, and consumers are processes which remove elements from the queue. The runtime system uses the variants \textit{single\hyp{}producer\hyp{}multiple\hyp{}consumer} (SPMC) queues and \textit{multiple\hyp{}producer\hyp{}single\hyp{}consumer} (MPSC) queues.
+
+A SPMC queue is used as a double\hyp{}ended queue for work\hyp{}stealing, implemented with the Chase\hyp{}Lev algorithm \citep{chase2005dynamic} combined with efficient work\hyp{}stealing for weak memory models \citep{le2013correct}.
+
+A MPSC queue is used by schedulers to signal other schedulers a work process is to be rescheduled on the corresponding scheduler, implemented with the algorithm presented by \citet{vyukov2014intrusive}. 
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Mutual Exclusion Locks}
+
+
+Creating a complete non\hyp{}blocking system is most of the times impossible for a multiprogrammed programs. Sometimes resorting to mutual exclusion in critical regions is unavoidable. Different types of locks is suitable for different situations. Whether the lock is often contested, meaning multiple kernel\hyp{}threads are trying to acquire the lock simultaneously, and if the lock is held for a longer period of time or not, will affect the performance. 
+
+\Citet[page 196--199]{brown2007c++csp2} performs a case study on different mutexes, describing various mutex algorithms and provides a benchmark and analysis of their performance. The conclusion from the case study is that for low contested, short\hyp{}term held mutexes, spinlocks yields best performance regarding low latency. 
 
 For multiprocessor architectures, the \textit{test\hyp{}and\hyp{}test\hyp{}and\hyp{}set} (TTAS) spinlock is generally favorable as it causes less memory contention than the standard spinlock. Instead of constantly trying to test\hyp{}and\hyp{}set the lock, it waits until the lock appears free. Different variants of the TTAS spinlock includes constant/exponential backoff during contention and cache friendly atomic operations.
 
+For most inter\hyp{}process runtime procedures, a TTAS spinlock with exponential backoff during contention is used. For idle schedulers waiting, the standard \lstinline[style={CustomC++}]|std::mutex| lock is used.
 
-\FloatBarrier
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Runtime System Overview}
-\label{sec:runtime_system_overview}
+\section{Runtime System Implementation}
+\label{sec:runtime_system_implementation}
 
-The runtime system for ProXC++ is based on \textit{contexts}, which represent a point of computational execution. A context is a user\hyp{}thread, meaning it has its own program stack and processor context. A kernel\hyp{}thread always has a main context and a scheduler context, while it may have zero or more work contexts. Contexts are based on the hybrid threading model (see \cref{subsec:threading_models}).
 
-At startup, the initial main context creates $N-1$ kernel\hyp{}threads, given the processor has $N$ online logical cores. Each main context then creates a scheduler context, which represent the runtime environment for each kernel\hyp{}thread. Only the initial main context does any meaningful work, as the other main contexts only purpose is to spawn and join the scheduler context. Whenever the initial main context returns, the runtime environment will cleanup and shutdown. At the creation of a new kernel\hyp{}thread, along side with its main context and scheduler context, the scheduler will wait as idle (block) until available work is ready in other schedulers.
+The runtime systems consists of two major implementation parts: implementation of lightweight processes, and implementation of a runtime scheduler.
 
-\Cref{fig:runtime_overview} displays a rough outline of how the contexts, user\hyp{}threads and kernel\hyp{}threads are organized relative to each other. Note that even though work contexts are present in each kernel\hyp{}thread, it 
+Processes are implemented as user\hyp{}threads, and are called \textit{contexts} in the runtime. Processes uses contexts as its back end, meaning processes represent a meaningful part of computation while contexts represent the actual processor state of the computation. At runtime, the scheduler manipulates contexts when transferring control of execution between processes. 
+
+The runtime differentiates between three types of contexts, and if a context is dynamic or static, i.e. a context can migrate between schedulers or not:
+
+\begin{enumerate}[topsep=0em,itemsep=-1em,partopsep=0.5em,parsep=1em]
+    \item \textbf{Main context} -- context of a kernel\hyp{}thread. When the main context returns, the corresponding kernel\hyp{}thread terminates. Main contexts are static; they cannot migrate between schedulers.
+    \item \textbf{Scheduler context} -- context of the scheduler. The scheduler context only returns when the main program exits. Scheduler contexts are static; they cannot migrate between schedulers.
+    \item \textbf{Work context} -- context of a work process. Work contexts are dynamic; they can migrate between schedulers.
+\end{enumerate}
+
+The initialization procedure of the runtime system is invoked with the first call to the scheduler. Given there are $N$ online logical processor cores, the procedure spawns $N-1$ additional kernel\hyp{}threads, as the initial main kernel\hyp{}thread is included. A scheduler is initialized for each kernel\hyp{}thread, representing the runtime environment for the corresponding thread. Schedulers are accessed via thread local static methods, which point to the scheduler object.
+
+The initial main context, in other words context of the \texttt{main()} function, is special. It is the only context which represents some productive work of the running program, but cannot migrate between schedulers. All other main contexts (from the other spawned kernel\hyp{}threads) only joins the scheduler context, and operates invisible to the programmer. The initial main context cannot migrate because it is calling the runtime constructors. When the main context returns, the destructors are called for the corresponding runtime objects, such as the scheduler. If the initial main context where to migrate and return on an kernel\hyp{}thread other than its origin, the runtime cleanup would result in erroneous behaviour.
+
+When the initial main context returns, the cleanup procedure of the runtime system is invoked if and only if the initialization procedure has been invoked previously.
+
+Only the scheduler for which the initial main context resides on will begin as running. All other initialized schedulers will begin as idle.
+
+\Cref{fig:runtime_overview} displays a rough outline of how the contexts, user\hyp{}threads and kernel\hyp{}threads are organized relative to each other. Note that the number of work contexts on each scheduler are zero\hyp{}or\hyp{}more, but the accumulative sum of all work contexts on all schedulers equals $M$.
 
 \begin{figure}[h!]
     \centering
-    \includegraphics[width=0.8\linewidth]{fig/runtime_overview}
-    \caption{Overview of the runtime system, with N online processor cores.}
+    \includegraphics[width=0.9\linewidth]{fig/runtime_overview}
+    \caption{Overview of the runtime system with $M$ work contexts, given $N$ online processor cores.}
     \label{fig:runtime_overview}
 \end{figure}
 
-Work is distributed among schedulers through work stealing (see \cref{subsec:work_stealing}). This is achieved by each scheduler having a double\hyp{}ended queue (deque for short) containing ready work for that given scheduler. Whenever work is spawned by a scheduler, or idle work becomes ready, it is pushed onto the deque. This allows idle schedulers to try steal work and resume.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Processes}
+\label{subsec:process_implementation}
 
 
-\FloatBarrier
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Contexts}
-\label{subsec:contexts}
+Processes are a vital part of ProXC++. As stated many times before, processes represents some kind of computation of the total program, which in code translates to running a function concurrently with the rest of the system. Constructing a process requires to supply a function pointer and its corresponding arguments. The process object constructs a context object out the function pointer and arguments, and stores an intrusive pointer to the context object as a data member. In other words, the process is no more than an opaque type to a context object. The programmer implicitly creates new contexts through processes, while the scheduler under the hood operates on the contexts. See \cref{lst:process_type} for reference.
 
-The runtime system differentiates contexts in two categories: \textit{process vs. scheduler} and \textit{static vs. dynamic}.
+\begin{lstfloat}
+\begin{lstlisting}[caption={Minimal process type.}, label={lst:process_type}, style={CustomC++}, xleftmargin={4em}]
+class Process {
+private:
+    using CtxPtr = boost::intrusive_ptr<proxc::Context>;
+    CtxPtr ctx_ptr_{ nullptr };
+public:
+    template<typename Fn, typename... Args>
+    Process(Fn && fn, Args &&... args);
+};
+\end{lstlisting}
+\end{lstfloat}
 
-A process context represents a part of computation from the program, while the scheduler context is, as the name implies, the scheduler which is in control of scheduling the different process contexts. A static context is a context which cannot \textit{migrate} between schedulers, while a dynamic context can.
+The context objects represent the execution state of the computation. Each context object contains an execution context, which is the actual execution state of the computation. The execution context is implemented by the Boost Context library, which encapsulates context switching and manages the associated contexts stack. Note that a context object refers to the context type defined by the runtime system, and execution context refers to the Boost Context object which defines the actual processor state.
 
-For every kernel\hyp{}thread, there always exist a \textit{main context} and a \textit{scheduler context}. The main context is the context of the actual kernel\hyp{}thread, meaning the kernel\hyp{}thread returns when the main context returns. It is a process context, since it represents a part of the computation in the program, and a static context, since it cannot migrate between schedulers. It is undefined behaviour FIXME for main context to return (exit) on a kernel\hyp{}thread different from where it originated from, which is why the main context is static.
+The context object encapsulates the execution context with relevant runtime functionality, such as control structure data and context states.
 
-The scheduler context is responsible for creating new work contexts, schedule between work contexts, and destroying finished work contexts. The scheduler is never visible to the programmer, and is the driving force behind the runtime environment. The scheduler is obviously a static context, as having multiple schedulers on the same kernel\hyp{}thread is unintuitive and unproductive.
+Execution contexts can either create a context of the current running execution context, or takes a function pointer of the type \lstinline[style={CustomC++}]|void(void*)|. Transfer of control flow between execution contexts is done by calling another execution context with the overloaded \lstinline[style={CustomC++}]|void* operator()(void*)| method. Parameter passing is possible through void pointer casting. When transferring control to another execution context, an optional pointer can be passed. If this is the first transfer of control to the execution context, the parameter will be passed as the void pointer argument for the function. Else, the void pointer will be passed as the return value of the transfer of control operator.
 
-Besides the main and scheduler context, the rest of the program is composed by \textit{work contexts}. Work contexts are process contexts, but opposed to the main context, are dynamic instead of static. Being dynamic allows work contexts to migrate between schedulers. 
+\Cref{lst:transfer_control_execution_contexts} gives an example of how execution contexts work. An execution context of the current running context is made, as well as an execution context of a lambda function. The output of the code snippet will print \texttt{main} and \texttt{work} in that order. Refer to the Boost Context documentation for more thorough explanation of the execution context implementation \citep{kowalke2017boost}.
 
-Contexts are implemented using the Boost Context library \citep{kowalke2017boost}. Boost Context creates an abstraction over the execution state of a thread called \textit{execution context}, which includes stack and stack pointer, local variables, CPU registers and flags, and instruction pointer. The execution context allows transfer of control between other execution contexts, allowing to build higher level abstractions such as user\hyp{}threads. Execution contexts can also migrate between kernel\hyp{}threads.
+\begin{lstfloat}
+\begin{lstlisting}[caption={Transfer of control between execution contexts.}, label={lst:transfer_control_execution_contexts}, style={CustomC++}, xleftmargin={4em}]
+using ex_ctx = boost::context::execution_context;
+ex_ctx main_ctx{ex_ctx::current()};
+ex_ctx work_ctx{[&main_ctx](void* vp){
+    std::string* msg = static_cast<std::string*>(vp);
+    std::cout << *msg << std::endl;
+    // prints `main`
+    std::string work_msg{"work"};
+    // transfer of control to main_ctx
+    main_ctx(static_cast<void*>(&work_msg));
+    // never returns
+}};
+std::string main_msg{"main"};
+// transfer of control to work_ctx
+void* vp = work_ctx(static_cast<void*>(&main_msg));
+std::string* msg = static_cast<std::string*>(vp);
+std::cout << *msg << std::endl;
+// prints `work`
+\end{lstlisting}
+\end{lstfloat}
 
-The context data structure is represented as a class, containing an execution context as well as a collection of flags, intrusive hooks, a wait queue, and a spinlock. The context class only acts as an information container for a given user\hyp{}thread, as most of the functionality of the context is implemented by the scheduler.
+When creating a context object, an enclosing entry function of the type \lstinline[style={CustomC++}]|void(void*)| is created, which calls the received function with its arguments. This entry function, called trampoline, handles the void pointer argument from the execution context, calls the process function, and calls the terminate procedure when the process function returns. This way, all terminating processes can be gracefully resolved by the trampoline invisible to the programmer. Entry functions are created with generic lambdas, allowing to create generic entry function calling over any type of function pointer and arguments. This is explained in further detail in \cref{subsec:scheduler_implementation}.
+
+The context object contains the type of the context, the execution context, the entry function for the particular process, and a pointer to the parent scheduler. Each process also has its own spinlock, used when synchronizing on certain inter\hyp{}process synchronization. Additionally, control data used by the scheduler is stored in the context object, such as intrusive hooks and time points for timed suspension. See \cref{lst:context_type} for a stripped down version of the context class definition.
+
+\begin{lstfloat}
+\begin{lstlisting}[caption={Minimal context type.}, label={lst:context_type}, style={CustomC++}, xleftmargin={4em}]
+class Context {
+private:
+    using ExCtxT = boost::context::execution_context;
+    using EntryFn = delegate<void(void*)>;
+    using TimePointT = std::chrono::steady_clock::time_point;
+    ExCtxT ex_ctx_;
+    EntryFn entry_fn_{ nullptr };
+    proxc::Scheduler * scheduler_ptr_{ nullptr };
+public:
+    TimePointT time_point_{ TimePointT::max() };
+    proxc::Alt * alt_{ nullptr };
+    proxc::Spinlock splk_;
+    /* intrusive data members */
+};
+\end{lstlisting}
+\end{lstfloat}
+
+The context object does not implement much functionality, other than wrapping the execution context state with additional control structure data and intrusive data members. The functionality is implemented in the scheduler, which is explained in further detail in \cref{subsec:scheduler_implementation}.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Scheduler}
+\label{subsec:scheduler_implementation}
+
+The scheduler is the corner piece of runtime system. It has the sole responsibility of managing the different contexts, including creating, scheduling, and destroying contexts.
 
 \begin{figure}[h!]
     \centering
-    \includegraphics[width=0.6\linewidth]{fig/context_states}
+    \includegraphics[width=0.7\linewidth]{fig/context_states}
     \caption{Finite state machine of context states and transitions.}
     \label{fig:context_states}
 \end{figure}
 
 
-\FloatBarrier
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Processes}
-\label{subsec:processes}
+\section{Library Feature Implementations}
 
-A concurrent program using ProXC++ consists of \textit{processes}, called \textit{proc} in code. These processes, same as in CSP, are independent points of execution, with each running sequential code. In code, a process is represented by a function and its corresponding arguments. When scheduled, the function is executed concurrently with the rest of the program, and exits when the function returns. 
+\subsection{Timers}
 
-The process is no more than an opaque type to a context. The programmer implicitly creates new contexts through processes, while the scheduler under the hood operates on the contexts.
+\subsection{Parallel Statement}
 
-Processes can be dynamically generated, either through explicitly creating a dynamic collection of processes or through use of replicators.
+\subsection{Channels}
 
-% Talk more about single processes and replicated processes, how they are defiend, how they work etc.
+\subsection{Alting}
 
 
 \FloatBarrier
@@ -98,7 +206,7 @@ Processes can be dynamically generated, either through explicitly creating a dyn
 % process create, schedule, join, destroy
 % process timeouts
 
-The scheduler is the corner piece of runtime system. It has the sole responsibility of managing the different contexts, including creating, scheduling, and destroying contexts. The scheduler runs as its own context, running in an scheduler loop until the program exits. Each spawned kernel\hyp{}thread contains a scheduler context, and the scheduler context never migrates to an another kernel\hyp{}thread. Each scheduler is the ``owner'' of one or more process contexts. ``Owning'' a context is synonymous with management; scheduling, inter\hyp{}process handling, and destroying the context when the corresponding process terminates. When a process is created, the scheduler residing on the same kernel\hyp{}thread ``owns'' that context. Only one scheduler can ``own'' a context at a time.
+The scheduler runs as its own context, running in an scheduler loop until the program exits. Each spawned kernel\hyp{}thread contains a scheduler context, and the scheduler context never migrates to an another kernel\hyp{}thread. Each scheduler is the ``owner'' of one or more process contexts. ``Owning'' a context is synonymous with management; scheduling, inter\hyp{}process handling, and destroying the context when the corresponding process terminates. When a process is created, the scheduler residing on the same kernel\hyp{}thread ``owns'' that context. Only one scheduler can ``own'' a context at a time.
 
 A scheduler consists of context queues, scheduler functionality, and a scheduler context running an event loop.
 
