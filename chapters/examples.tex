@@ -14,18 +14,14 @@ First of all, ProXC++ must be installed on the work environment. ProXC++ is avai
 
 It is given the header file \lstinline[style={CustomC++}]|#include <proxc.hpp>| is included in all code examples shown in this chapter, as well as in all C++ files programming with ProXC++.
 
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Library Features}
-\label{sec:example_library_features}
-
 The core feature of ProXC++ is lightweight processes called \texttt{Process}. These processes can communicate with each other via message\hyp{}passing, using \texttt{Channel}s. These channels allow for synchronous and safe communication. Simultaneous channel communication can be achieved through \texttt{Alting}. On top of this, several types of \texttt{Timer}s allows for soft real\hyp{}time requirements on different operations, such as channel operations and explicit process suspension.
 
 Programs using ProXC++ does not need to initialize or cleanup the library. This is done automatically by the library. The first API call to the library will initialize the library, and when main exits will the library cleanup. No cleanup will be performed unless the library has been initialized. 
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Processes}
+\section{Processes}
+
 
 At the core of ProXC++ are lightweight processes. These processes is a separate scope of execution which can run concurrently with the rest of the program. In code, these processes are represented by a function and its corresponding arguments. This function must have a return type of \lstinline[style={CustomC++}]|void|, but can have any type and number of arguments. \cref{lst:code_example_process_func} shows a function which qualifies running as a process.
 
@@ -64,7 +60,8 @@ Process creation also has perfect forwarding of arguments, meaning any type of a
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Timers}
+\section{Timers}
+
 
 Three types of timers are available in ProXC++: egg, repeat and date timers. Timers allow for soft real\hyp{}time requirements on certain operations. All timers have support for time period and duration declarations using the standard time library \lstinline[style={CustomC++}]|std::chrono|.
 
@@ -76,7 +73,8 @@ Date timers are used for absolute timeout periods. Given a time point, the date 
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Channels}
+\section{Channels}
+
 
 Processes uses message\hyp{}passing to communicate, which is realized through channels. Channels in ProXC++ are synchronous, unbuffered, unidirectional, and type safe. 
 
@@ -145,8 +143,10 @@ void some_process(proxc::channel::Rx<int> rx) {
 \end{lstlisting}
 \end{lstfloat}
 
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Alting}
+\section{Alting}
+
 
 If a process were to wait on multiple channel ends simultaneously, normal channel operations would not suffice. The alting construct however allows a process to do simultaneously wait on different alternatives. These alternatives include channel send and receive, as well as timeouts and skip.
 

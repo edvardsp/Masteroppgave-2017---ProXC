@@ -73,6 +73,7 @@ Work processes may also suspend, or sleep, until a given or derived time point. 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Timers}
+\label{subsec:timers_desgin}
 
 
 Three types of timers are available: \textit{egg}, \textit{repeat} and \textit{date} timer. Timers are used for either explicit process suspension, or for timeout on channel or alternation operations. 
@@ -86,6 +87,7 @@ Date timer is used for absolute timeout. It is a one\hyp{}shot timer, and will a
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Fork\hyp{}Join Parallelism}
+\label{subsec:fork_join_parallelism}
 
 
 Processes can spawn new processes in parallel with the \textit{parallel} statement. The parallel statement takes one or more processes, either as single process statements or process replicators, and spawns and runs these processes in parallel. The spawned processes runs concurrently with any other processes currently running in the program. The parallel statement is the only way to spawn new processes with ProXC++.
@@ -105,6 +107,7 @@ The processes to be executed in parallel can be defined in two ways: either as a
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Channels}
+\label{subsec:channel_design}
 
 
 Channels forms the only means of communication as well as synchronization between work processes via message\hyp{}passing. Given a channel, some type of message can be transmitted between a sender and a receiver.
@@ -130,13 +133,14 @@ Some channel design has the concept of limiting how many unique processes can ac
 
 Ensuring both Tx and Rx agrees on the type of message being transmitted has to do with \textit{type safety}. If both participants of a channel operations disagrees in the type of the transmitted message, a \textit{type error} occurs. Type safety is therefore to discourage or prevent type errors. It is obviously desirable for a type safe channel, but it is highly dependent on support from either the programming language or the compiler to enforce type safety. A compromise is size safe channels, where both participants agree on the size of the message rather than the type. Size safety is not as desirable as type safety, but is much more doable to enforce.
 
-
+Channels has a notion of being open or closed. An open channel operates as normal, but a closed channel will deny any operations being completed. A channel always starts as open, and can be closed in on of two ways: an explicit close from either participant, or one of two channel ends goes out of scope, i.e. is no longer available. When a channel becomes closed it remains closed. A closed channel is used to signal participants when no more values will be sent on the channel, which is useful to communicate completion to the opposite channel end.
 
 Considering the different channel factors above, channels in ProXC++ are synchronous and unbuffered, unidrectional, one\hyp{}to\hyp{}one and type safe.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Alting}
+\label{subsec:alting_design}
 
 
 Alternation is a construct allowing to wait on multiple alternatives simultaneously, selecting an alternative when one or more alternatives are ready. Each alternative has an optional corresponding block of code (closure) which is executed if chosen. Alternatives can also be guarded by a boolean value, enabling or disabling certain alternatives on certain conditions. These boolean guards are evaluated at the initialization of the alternation procedure.
@@ -165,6 +169,7 @@ An channel alternative can either be selected \textit{actively} or \textit{passi
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Work Stealing Algorithm}
+\label{subsec:work_stealing_algorithm}
 
 
 As each scheduler has their unique set of work processes, work stealing is employed to distribute superfluous work processes from a running scheduler to an idle scheduler. 
@@ -188,6 +193,7 @@ To mitigate unnecessary process migrations by overaggressive work stealing, an i
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Channel End Algorithm}
+\label{subsec:channel_end_algorithm}
 
 
 The channel algorithm is different whether the channel end is alting or not. A set of observations are postulated in \cref{list:conjecture_both,list:conjecture_nonalting,list:conjecture_alting} to form the basis of the channel algorithm.

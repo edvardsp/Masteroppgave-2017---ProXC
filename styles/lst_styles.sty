@@ -1,8 +1,10 @@
 
 \usepackage[usenames]{xcolor}
 \usepackage{listings}
+
 \definecolor{listinggray}{gray}{0.9}
 \definecolor{lbcolor}{rgb}{0.9,0.9,0.9}
+
 \lstdefinestyle{CustomC}{
     tabsize=4,    
     language=C,
@@ -29,6 +31,7 @@
     numberstyle=\color{black},
     identifierstyle=\color{black},
 }
+
 \lstdefinestyle{CustomC++}{
     tabsize=4,    
     language=C++,
@@ -55,6 +58,7 @@
     numberstyle=\color{black},
     identifierstyle=\color{black},
 }
+
 \lstdefinelanguage{Golang}{
     morekeywords=[1]{package,import,func,type,struct,return,defer,panic,%
         recover,select,var,const,iota,go},%
@@ -72,6 +76,7 @@
     morestring=[b]",%
     morestring=[s]{`}{`},%
 }
+
 \lstdefinestyle{CustomGo}{
     tabsize=4,    
     language=Golang,
@@ -98,6 +103,7 @@
     numberstyle=\color{black},
     identifierstyle=\color{black},
 }
+
 \lstdefinelanguage{Occam}{
     morekeywords=[1]{SEQ,PAR,IF,ALT,WHILE,CASE,VALOF,PROC,PROCESSOR,PLACED,PRI,RESULT},%
     morekeywords=[2]{INT,INT16,INT32,INT64,REAL,REAL32,REAL64,BYTE,BOOL,TRUE,FALSE,AFTER,AND,AT,BITAND,BITNOT,BITOR,CHAN,FOR,FROM,INCLUDE,IS,MAPPING,MAP,SET,ONTO,DO,CONFIG,MINUS,PLUS,TIMES,REM,MOSTNEG,MOSTPOS,NETWORK,NODE,EDGE,CONNECT,WITH,HOST,ARC,NOT,OF,OR,PLACE,PORT,PROTOCOL,RETYPES,ROUND,TRUNC,SIZE,SKIP,STOP,TIMER,USE,VAL},%
@@ -105,6 +111,7 @@
     morecomment=[l]{--},%
     morestring=[b]",%
 }
+
 \lstdefinestyle{CustomOccam}{
     tabsize=4,    
     language=Occam,
@@ -131,6 +138,7 @@
     numberstyle=\color{black},
     identifierstyle=\color{black},
 }
+
 \lstdefinestyle{CustomAsm}{
     tabsize=4,    
     language=[x86masm]Assembler,
