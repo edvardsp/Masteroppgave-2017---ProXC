@@ -9,9 +9,9 @@
 \label{ch:design}
 
 
-First of all, \Proxc{} is a concurrency library for C++. Only recently as of C++11 has the C++ programming language added concurrency primitives to the standard library, such as threading and futures. However, C++ lacks any standard support for concurrency in user space. 
+First of all, \Proxc{} is a concurrency library for \Cpp{}. Only recently as of \Cpp{}11 has the \Cpp{} programming language added concurrency primitives to the standard library, such as threading and futures. However, \Cpp{} lacks any standard support for concurrency in user space. 
 
-Designing a concurrency library for C++ with dynamic multithreading requires some notion of user space threading mechanism, which in turn requires a runtime system. This runtime system acts as an invisible layer between the program and the operating system, handling resources and logistics of scheduling the different processes running in the program. 
+Designing a concurrency library for \Cpp{} with dynamic multithreading requires some notion of user space threading mechanism, which in turn requires a runtime system. This runtime system acts as an invisible layer between the program and the operating system, handling resources and logistics of scheduling the different processes running in the program. 
 
 All library functionality, such as channels, builds upon the framework provided by the runtime system. Essentially, anything must be done via the runtime system, which is why the limitations of the runtime system functionality limits the potentiality of the library functionality.
 

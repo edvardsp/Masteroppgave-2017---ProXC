@@ -13,7 +13,7 @@ This chapter takes the motivation described in the introduction and elaborates o
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Motivation behind Multicore CSP}
+\section{Motivation behind CSP and Multicore}
 \label{sec:multicore_csp_motivation}
 
 
@@ -29,7 +29,7 @@ This thesis argues CSP is a good candidate for creating high performance softwar
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Existing Solutions of Multicore CSP}
+\section{Existing Solutions of CSP and Multicore}
 \label{sec:multicore_csp_existing}
 
 
@@ -40,16 +40,38 @@ Combining CSP with dynamic multithreading is no new invention. Even tough dynami
 \subsection{Programming Languages}
 
 
-Not many programming languages has made concurrency a native part of the language design, yet alone CSP\hyp{}based concurrency. For those languages with CSP as a native influence, dynamic multithreading has usually not been the focus. The first CSP\hyp{}based languages was designed for microprocessor hardware, and with the years transitioned to general\hyp{}purpose programming languages. Below are the three most influential CSP\hyp{}based programming languages with dynamic multithreading presented.
+The minority of programming languages has made concurrency a native part of the language design, yet alone CSP\hyp{}based concurrency. For those languages with CSP as a native influence, dynamic multithreading has usually not been the focus. The first CSP\hyp{}based languages was designed for microprocessor hardware, and with the years transitioned to general\hyp{}purpose programming languages. Below are the three most influential CSP\hyp{}based programming languages with dynamic multithreading presented.
 
 
-\subsubsection{occam on the Transputer}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{occam on the transputer}
 
 
-\subsubsection{XC on XMOS}
+Occam, a concurrent programming language, was the first programming language to build on the CSP process algebra. It was developed by INMOS \citep{may1983occam} and first appeared in 1983. The main motive behind occam was to develop a concurrent language to run on the transputer microprocessor \citep{may1984occam}, also developed by INMOS.
+
+The transputer microprocessor was the first general purpose microprocessor designed for parallel computing, allowing multiple transputers to easily be connected without the requirement for a complex communication bus. Running on a cluster of transputer microprocessors, occam programs allowed for concurrent systems to be running as true parallel computing.
+
+Sadly, occam was initially only for proprietary use, as support for occam was limited to the transputer microprocessor architecture. Multiple implementations of later occam versions and dialects has been made for more general purpose computers, but none has had support for true parallel computing in mind.
 
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{XC on the XCore}
+
+
+XC is a concurrent programming language, developed for real\hyp{}time embedded parallel computing \citep{watt2009programming}. XC targets the XCore processor architecture \citep{may2009xmos}, both developed by XMOS. XC as a programming language is based on C with custom syntax extensions and restrictions. Concurrency primitives are a native design of XC, providing features which corresponds to the architectural resources on the XCore.
+
+The XCore processor architecture is an embedded multicore architecture, aimed to use for parallel computing. An XCore supports concurrent execution of up to eight threads, with native support for inter\hyp{}thread and inter\hyp{}processor communication and thread scheduling. The main selling point of XCore is the deterministic execution of parallel threads, allowing concurrent system to have real\hyp{}time constraints combined with true parallel computing.
+
+However, just as occam, XC is only for proprietary use, only supporting the XCore microprocessor architecture. No other implementations of the XC programming language exists, making XC unavailable for the mainstream audience.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsubsection{Go}
+
+
+Go, also called Golang, is a concurrent programming language, developed by Google \citep{balbaert2012way}. In contrary to occam and XC, Go was developed for the widespread platform use rather than some proprietary hardware. Since its launch in 2009, Go has made its way to platforms such as all desktop platforms, various microprocessors, as well as mobile devices. 
+
+The Go language has built\hyp{}in concurrency primitives as a part of the language, including lightweight processes and channels. A major selling point of Go is the use of dynamic multithreading, where concurrent programs written in Go will by default utilize the available processor cores on the running processor architecture. This, together with native support for asynchronous IO, has made Go very popular for high\hyp{}performance networking and multiprocessing systems.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -59,11 +81,34 @@ Not many programming languages has made concurrency a native part of the languag
 Several CSP\hyp{}based concurrency libraries has been developed for more popular and established programming languages not supporting CSP natively. Below are the most influential CSP\hyp{}based concurrency libraries with dynamic multithreading presented.
 
 
-\subsubsection{C++CSP2}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{\Cppcsp2{}}
 
 
-\subsubsection{C++CSP}
+\Cppcsp2{} \citep{brown2007c++csp2} is a concurrency library for \Cpp, providing concurrency primitives and abstractions based on CSP. \Cppcsp2{}, which is the successor of \Cppcsp{} \citep{brown2003c++csp}, focuses on extending the original work by implementing a many\hyp{}to\hyp{}many threading model, essentially providing dynamic multithreading.
+
+\Cppcsp2{} achieves dynamic multithreading by allowing the programmer to define which processes run on which threads. The methodology is that the programmer must identify and define the course\hyp{}grained parallelism between processes, and lets the library take care of the fine\hyp{}grained parallelism between processes on a given thread.
+
+\Cppcsp2{} was the first major implementation of a concurrency library for \Cpp{} which offered CSP abstractions and dynamic multithreading. However, sine its release in 2007, the library is not very well used with modern \Cpp{}. With lack of modern \Cpp{} semantics, as well as in general being hard to develop with, has given \Cppcsp2{} not much widespread use among \Cpp{} programmers.
 
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{\Cppcsp{}}
+
+
+\Cppcsp{}, \textbf{not} to be mistaken by the precursor of \Cppcsp2{}, is a concurrency library for \Cpp{}. \Cppcsp{} is developed by \citet{chalmers2016cppcsp}, and aims to provide a CSP\hyp{}based concurrency library for modern \Cpp{} which utilizes dynamic multithreading.
+
+\Cppcsp{} implements its dynamic multithreading with a kernel threading model, where each process is a kernel\hyp{}thread. Scheduling of the processes is therefore the responsibility of the operating system, rather than the runtime system of the library. The runtime system design is very different from how \Cppcsp2{} implements dynamic multithreading.
+
+Since its release in 2016, \Cppcsp{} is a rather new programming library. Even though it is much more suited for more modern development of concurrent \Cpp{} programs, the dynamic multithreading implementation can be argued to not be suitable for high\hyp{}performance and scalable concurrent systems.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsubsection{Boost.Fiber}
 
+
+Boost.Fiber is a concurrency library for \Cpp{} \citep{kowalke2017boost}, developed as a part of the \Cpp{} Boost libraries. From the project description, ``\textit{Boost.Fiber provides a framework for micro-/userland-threads (fibers) scheduled cooperatively}''. A selection of concurrency primitives which are based on CSP is provided by Boost.Fiber, such as channels.
+
+Boost.Fiber has support for dynamic multithreading to cooperatively schedule fibers across multiple processor cores. Dynamic multithreading is implemented by having multiple schedulers running on multiple kernel\hyp{}threads, using work stealing for distributing work among the schedulers.
+
+Boost.Fiber is a fairly new library, and has great potential for widespread use as its a part of the very popular and acknowledged Boost library collection. However, very few of the abstractions provided by Boost.Fiber are based on CSP, and lacks some very important abstractions such as alting on multiple channels. However, it is as of writing this thesis in active development, and could in the future expand the feature set with more well sought after CSP abstractions. 

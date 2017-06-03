@@ -35,7 +35,7 @@ This chapter compares and discusses the differences between the two projects \Pr
         \\ \hline
         
         \textbf{\begin{tabular}[c]{@{}l@{}}Target\\ langauge\end{tabular}} & 
-        \begin{tabular}[c]{@{}l@{}}The C++ programming\\ language.\end{tabular} &
+        \begin{tabular}[c]{@{}l@{}}The \Cpp{} programming\\ language.\end{tabular} &
         \begin{tabular}[c]{@{}l@{}}The C programming\\ language.\end{tabular}
         
         \\ \hline
@@ -134,11 +134,11 @@ Much of the shortcomings and limitations present in ProXC has been improved upon
 \section{Enforcing Correct Usage}
 
 
-\Proxc{} goes to great lengths to enforce correct usage by using much of the semantic facilities present in the C++ programming language. But all problems existing in C++ programs, such as null pointer dereferencing and memory leaks, are possible in \Proxc{} programs.  
+\Proxc{} goes to great lengths to enforce correct usage by using much of the semantic facilities present in the \Cpp{} programming language. But all problems existing in \Cpp{} programs, such as null pointer dereferencing and memory leaks, are possible in \Proxc{} programs.  
 
 It is impossible to create a system which always generates and enforces correct program behaviour, and somewhere does the line have to be drawn. For instance, channels in \Proxc{} are one\hyp{}to\hyp{}one, and if multiple processes where to operate on the same channel end simultaneously, the result would be undefined behaviour. Channel ends have therefore been made non\hyp{}copyable to enforce the channel end only having a single owner and user. It is however very easy to bypass this by sending a reference of the channel end when spawning a new process, making multiple users still possible. Having shared memory between processes is also entirely possible, but is highly discouraged.
 
-\Proxc{} is all about providing a safe framework for creating concurrent systems. Creating a complete safe framework is impossible, as the foundation of C++ is inherently unsafe. Therefore, \Proxc{} only enforces correct usage to some degree, and let the rest be up to the programmer.
+\Proxc{} is all about providing a safe framework for creating concurrent systems. Creating a complete safe framework is impossible, as the foundation of \Cpp{} is inherently unsafe. Therefore, \Proxc{} only enforces correct usage to some degree, and let the rest be up to the programmer.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

@@ -9,7 +9,7 @@
 \label{ch:implementation}
 
 
-The library is written in C++, with standard C++14 dialect. The reader is expected to have a fair understanding of C++, and being familiar with standard C++11 dialect or newer is recommended. Detailed explanations of the C++ programming language is not presented here. Refer to any C++ reference (e.g. \citet{stroustrup2013c++}) for more details.
+The library is written in \Cpp{}, with standard \Cpp{}14 dialect. The reader is expected to have a fair understanding of \Cpp{}, and being familiar with standard \Cpp{}11 dialect or newer is recommended. Detailed explanations of the \Cpp{} programming language is not presented here. Refer to any \Cpp{} reference (e.g. \citet{stroustrup2013c++}) for more details.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -17,7 +17,7 @@ The library is written in C++, with standard C++14 dialect. The reader is expect
 \label{sec:data_structures}
 
 
-A set of data structures is commonly used by the runtime system. Apart from the C++ Standard Template Library (STL), the most notable data structures are \textit{intrusive containers}, \textit{concurrent queues}, and \textit{mutual exclusion locks}.
+A set of data structures is commonly used by the runtime system. Apart from the \Cpp{} Standard Template Library (STL), the most notable data structures are \textit{intrusive containers}, \textit{concurrent queues}, and \textit{mutual exclusion locks}.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -209,7 +209,7 @@ public:
 
 The scheduler has two static methods: \lstinline[style={CustomC++}]|self()| and \lstinline[style={CustomC++}]|running()|. The \lstinline[style={CustomC++}]|self()| method returns a pointer to the scheduler object which is the parent scheduler for the current running kernel\hyp{}thread, and can be called from any context. The \lstinline[style={CustomC++}]|running()| method returns a pointer to the context object currently running on the kernel\hyp{}thread, and can be called from any context.
 
-The \lstinline[style={CustomC++}]|self()| method is the starting point of the runtime system, for which the first call to will trigger the initialization procedure. The method contains a static thread local variable of the scheduler initializer object, which is a Schwarz counter. A Schwarz counter, also known as a nifty counter, is a C++ idiom for ensuring a non\hyp{}local static object is initialized before its first use and destroyed only after last use of the object, where the non\hyp{}local static object in this case is the scheduler object. 
+The \lstinline[style={CustomC++}]|self()| method is the starting point of the runtime system, for which the first call to will trigger the initialization procedure. The method contains a static thread local variable of the scheduler initializer object, which is a Schwarz counter. A Schwarz counter, also known as a nifty counter, is a \Cpp{} idiom for ensuring a non\hyp{}local static object is initialized before its first use and destroyed only after last use of the object, where the non\hyp{}local static object in this case is the scheduler object. 
 
 The first call to the scheduler initializer constructor on each kernel\hyp{}thread will initialize the scheduler object for the corresponding kernel\hyp{}thread, and simultaneously set its static thread local pointer member to the scheduler object. This static thread local pointer is the pointer which is returned by \lstinline[style={CustomC++}]|self()| method. Additionally, the \lstinline[style={CustomC++}]|running()| method returns the \lstinline[style={CustomC++}]|running_ptr_| member from the returned scheduler object, which is retrieved by the \lstinline[style={CustomC++}]|self()| method.
 

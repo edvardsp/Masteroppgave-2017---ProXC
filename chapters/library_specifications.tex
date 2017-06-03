@@ -16,13 +16,13 @@ This chapter introduces \Proxc{}, the library developed for this thesis. The spe
 \label{sec:library_overview}
 
 
-\Proxc{} (pronounced ``proxy plus plus'') is a CSP\hyp{}influenced concurrency library for modern C++, specifically aimed at multiprogrammed parallel programs. Modern C++ in this regard meaning support for C++14 standard and later. The central ambition of \Proxc{} is to provide expressive and safe concurrency to C++ programs which fully and effectively utilizes available computational resources on multicore architectures.
+\Proxc{} (pronounced ``proxy plus plus'') is a CSP\hyp{}influenced concurrency library for modern \Cpp{}, specifically aimed at multiprogrammed parallel programs. Modern \Cpp{} in this regard meaning support for \Cpp{}14 standard and later. The central ambition of \Proxc{} is to provide expressive and safe concurrency to \Cpp{} programs which fully and effectively utilizes available computational resources on multicore architectures.
 
 \Proxc{} is a runtime system using a hybrid threading model. Work stealing is employed for load balancing between the schedulers, each running on an available logical core. 
 
 Available concurrency primitives in \Proxc{} are \textit{fork\hyp{}and\hyp{}join} parallelism, strict message\hyp{}passing, simultaneous event handling, and soft real\hyp{}time requirements.
 
-The name ``\Proxc{}'' is a continuation of the original library ProXC \citep{pettersen2016proxc}, where \Proxc{} targets C++ in contrast to ProXC targeting C. Since \Proxc{} aims to be an improvement over ProXC, the ``\textit{plus plus}'' could also be viewed as an ``\textit{incremental better}'' library. This is of course only intended to be humorous, as I personally like ``\textit{plus plus}'' better than slapping a ``2'' at the end of the name.
+The name ``\Proxc{}'' is a continuation of the original library ProXC \citep{pettersen2016proxc}, where \Proxc{} targets \Cpp{} in contrast to ProXC targeting C. Since \Proxc{} aims to be an improvement over ProXC, the ``\textit{plus plus}'' could also be viewed as an ``\textit{incremental better}'' library. This is of course only intended to be humorous, as I personally like ``\textit{plus plus}'' better than slapping a ``2'' at the end of the name.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -74,7 +74,7 @@ Waiting on multiple channel operations simultaneously can be achieved with altin
 \label{sec:target_platforms}
 
 
-\Proxc{} is targeted for desktop environments, especially multicore architectures. However, it should support all platforms that has access to a C++14 compliant compiler and the Boost C++ libraries \citep{boost2017boost} as well as the Boost Context library \citep{kowalke2017boost} (as Boost is portable). ``\textit{Should}'' is used here, because \Proxc{} is only tested on 64\hyp{}bit x86 Linux platform as of writing this thesis.
+\Proxc{} is targeted for desktop environments, especially multicore architectures. However, it should support all platforms that has access to a \Cpp{}14 compliant compiler and the Boost \Cpp{} libraries \citep{boost2017boost} as well as the Boost Context library \citep{kowalke2017boost} (as Boost is portable). ``\textit{Should}'' is used here, because \Proxc{} is only tested on 64\hyp{}bit x86 Linux platform as of writing this thesis.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -82,5 +82,5 @@ Waiting on multiple channel operations simultaneously can be achieved with altin
 \label{sec:dependencies}
 
 
-\Proxc{} uses a handful header\hyp{}only libraries from the Boost C++ libraries \citep{boost2017boost}, and the compiled library Boost Context \citep{kowalke2017boost} for portable and fast context switching between execution contexts. Boost Context is used as a foundation of the user\hyp{}thread implementation. As of why not rolling with a handwritten implementation of context switching, compared to ProXC, is with the simple reason of Boost Context being portable out of the box and writing context switching library is not the focus of this thesis.
+\Proxc{} uses a handful header\hyp{}only libraries from the Boost \Cpp{} libraries \citep{boost2017boost}, and the compiled library Boost Context \citep{kowalke2017boost} for portable and fast context switching between execution contexts. Boost Context is used as a foundation of the user\hyp{}thread implementation. As of why not rolling with a handwritten implementation of context switching, compared to ProXC, is with the simple reason of Boost Context being portable out of the box and writing context switching library is not the focus of this thesis.
 

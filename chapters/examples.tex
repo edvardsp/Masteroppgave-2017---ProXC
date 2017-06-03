@@ -8,9 +8,9 @@
 \chapter{Examples of Usage}
 \label{ch:examples_usage}
 
-This chapter introduces how \Proxc{} is used in C++ programs. Only the basics of \Proxc{} is presented, introducing all necessary features for understanding the library. First of all, \Proxc{} must be installed on the work environment. \Proxc{} is available for free as in beer on GitHub \citep{pettersen2017proxcgithub}. Following the install guide on the readme should be sufficient. For more advanced examples, check out the examples in the \texttt{examples/} folder on the GitHub project.
+This chapter introduces how \Proxc{} is used in \Cpp{} programs. Only the basics of \Proxc{} is presented, introducing all necessary features for understanding the library. First of all, \Proxc{} must be installed on the work environment. \Proxc{} is available for free as in beer on GitHub \citep{pettersen2017proxcgithub}. Following the install guide on the readme should be sufficient. For more advanced examples, check out the examples in the \texttt{examples/} folder on the GitHub project.
 
-All library related types and methods reside in the \lstinline[style={CustomC++}]|proxc| namespace, which will be omitted in all code examples. It is given the header file \lstinline[style={CustomC++}]|#include <proxc.hpp>| is included in all code examples shown in this chapter, as well as in all C++ files programming with ProXC+. The linker flag \lstinline[style={CustomC++}]|-lproxc| must also be passed during compilation.
+All library related types and methods reside in the \lstinline[style={CustomC++}]|proxc| namespace, which will be omitted in all code examples. It is given the header file \lstinline[style={CustomC++}]|#include <proxc.hpp>| is included in all code examples shown in this chapter, as well as in all \Cpp{} files programming with \Proxc. The linker flag \lstinline[style={CustomC++}]|-lproxc| must also be passed during compilation.
 
 Programs using \Proxc{} does not need to initialize or cleanup the library. This is done automatically by the library. The first call to the library which invokes the runtime system will initialize the library, and the cleanup procedure is invoked when the program exits. No cleanup will be invoked unless the library has been initialized. 
 
@@ -19,7 +19,7 @@ Programs using \Proxc{} does not need to initialize or cleanup the library. This
 \section{Processes}
 
 
-At the core of \Proxc{} are lightweight processes. These processes is a separate scope of execution which can run concurrently with the rest of the program. In code, these processes are represented by a function and its corresponding arguments. The main function of any C++ program is also implicitly a process. This function must have a return type of \lstinline[style={CustomC++}]|void|, but can have any type and number of arguments. \Cref{lst:code_example_process_func} shows different function prototypes where some qualify running as a process and some do not.
+At the core of \Proxc{} are lightweight processes. These processes is a separate scope of execution which can run concurrently with the rest of the program. In code, these processes are represented by a function and its corresponding arguments. The main function of any \Cpp{} program is also implicitly a process. This function must have a return type of \lstinline[style={CustomC++}]|void|, but can have any type and number of arguments. \Cref{lst:code_example_process_func} shows different function prototypes where some qualify running as a process and some do not.
 
 \begin{lstfloat}
 \begin{lstlisting}[caption={Different function prototypes which do and do not qualify as a process.}, label={lst:code_example_process_func}, style={CustomC++}, xleftmargin={2em}]
