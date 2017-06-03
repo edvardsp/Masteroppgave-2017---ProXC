@@ -8,7 +8,18 @@
 \section*{Abstract}
 \addcontentsline{toc}{section}{Abstract}
 
-This thesis presents the work done on \Proxc{}: a CSP\hyp{}inspired concurrency library for \Cpp{}. \Proxc{} emphasizes on dynamic multithreading, allowing to create high\hyp{}performance multiprogrammed systems for multicore architectures. The thesis argues the motivation for a dynamic multithreaded library is necessary for fully utilize the available resources in the future of multicore processors. A design and implementation of \Proxc{} is presented, as well as giving examples of usage on how to use the library. A set of tests with various degrees of parallelism are benchmarked with \Proxc{} against other similar multithreaded CSP frameworks, as well as their singlecore equivalent implementations. The results from the benchmarks are promising, indicating \Proxc{} are fully capable of utilizing the available resources in most cases. However, a slight issue with the distribution of large scale parallel work with \Proxc{} is highlighted and discussed. Limitations and uses of \Proxc{} is discusses, and a list of potential future work is presented. Lastly, a conclusion is drawn.
+
+Ever since mass\hyp{}market processors transitioned from singlecore to multicore architectures, software could no longer rely on an increase in sequential performance for an increase in software performance. Developing high\hyp{}performance software on multicore architectures now requires to exploit the apparent parallelism. Concurrent programming is the main tool to develop such software, but programmers struggle to create correct and scalable concurrent systems.
+
+It is argued in this thesis Communicating Sequential Processes (CSP) is a great framework for creating correct and expressive concurrent systems. Further, it is argued combining the parallel nature of CSP with a dynamic multithreaded runtime system sets the foundation for creating high\hyp{}performant and scalable software for multicore architectures.
+
+This thesis details the development of \Proxc{} -- a CSP\hyp{}influenced concurrency library for modern \Cpp{}, which is built around dynamic multithreading. Dynamic multithreading is implemented as a collection of lightweight processes cooperatively scheduled on multiple schedulers. The runtime system follows the hybrid threading model, where processes are implemented as user\hyp{}threads, and each runtime scheduler runs on its own kernel\hyp{}thread. Runtime schedulers employ randomized work stealing for load balancing ready processes to idle schedulers.
+
+A detailed design and implementation of \Proxc{} is presented, with focus on dynamic multithreading. New and existing algorithms are described, mostly for how process management and inter\hyp{}process communication and synchronization is administered by the runtime schedulers. Examples how \Proxc{} is used in \Cpp{} programs are presented, and a series of benchmarks with various degrees of parallelism is performed. \Proxc{} yields promising performance results, however some issues with the work stealing algorithm are highlighted and discussed.
+
+\Proxc{} is concluded by being a successful project, providing expressive and correct abstractions for creating concurrent programs and is able to exploit the parallelism in multicore processors. Some potential candidates for future work is outlined, including implementing support for networking.
+
+The source \Proxc{} library is publicly released as an open\hyp{}source project with an MIT license, available and free of charge on GitHub.
 
 \vfill
 

@@ -17,7 +17,7 @@ This chapter gives a more in\hyp{}depth explanation of different topics mentione
 \label{sec:concurrent_programming}
 
 
-Concurrent programming, or concurrent computing, is a form of computing to express programs or systems which execute multiple sequential computations in interleaving time periods, giving the impression of simultaneous execution. These computations are said to be running \textit{concurrently}, compared to \textit{sequentially} (one completing before the next start). These individual computations are often called \textit{processes} or \textit{threads}, which indicate a separate execution point. 
+Concurrent programming, or concurrent computing, is a form of computing to express programs or systems which execute multiple sequential computations in interleaving time periods, giving the impression of simultaneous execution. These computations are said to be running \textit{concurrently}, compared to \textit{sequentially} (one completing before the next start). These individual computations are often called \textit{processes}, \textit{tasks} or \textit{threads}, which indicate a separate execution point. Do not confuse the term \textit{process} in the context of concurrent programming with an individual program running in the context of an operating system.
 
 The notion of concurrency stems from the limitations of sequential programs and how all programs in the end is translated to machine code. Given the program is executed on a uniprocessor, only one machine code instruction will be executed at any given moment\footnote{Machine code execution is vastly more complex then presented here, e.g. pipelining and instruction\hyp{}level parallelism (ILP), but the sequential nature of program execution still stands}.  Since all computations in a sequential program must be executed sequential, it can be unintuitive how to model and implement systems which are inherently parallel. Concurrency aims to provide an abstraction level to bridge this limitation. Concurrent systems are therefore much more expressive than sequential systems, since it does not matter whether the program is executed in parallel or not, e.g. on a multiprocessor or uniprocessor.
 
@@ -31,7 +31,7 @@ Concurrency is a great tool for programmers, allowing concurrent systems to be e
 \label{subsec:threading_models}
 
 
-Threading is the foundation of concurrency, which allows multiple computations to be executed simultaneously. Some sort of threading mechanism must be implemented on a platform to provide concurrency. On \textit{operating systems} (OS), threading mechanisms falls mainly into three types of threading models: \textit{user\hyp{}threads}, \textit{kernel\hyp{}threads}, or \textit{hybrid\hyp{}threads}, which is a combination of the two first models. \citet{c++csp2} goes into further detail on the three models, and a short summary is presented below.
+Threading is the foundation of concurrency, which allows multiple computations to be executed simultaneously. Some sort of threading mechanism must be implemented on a platform to provide concurrency. On \textit{operating systems} (OS), threading mechanisms falls mainly into three types of threading models: \textit{user\hyp{}threads}, \textit{kernel\hyp{}threads}, or \textit{hybrid\hyp{}threads}, which is a combination of the two first models. \citet{brown2007c++csp2} goes into further detail on the three models, and a short summary is presented below.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
