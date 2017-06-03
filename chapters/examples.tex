@@ -8,66 +8,102 @@
 \chapter{Examples of Usage}
 \label{ch:examples_usage}
 
-This chapter introduces how ProXC++ is used in C++ programs. Only the basics of ProXC++ is presented in this chapter, introducing all necessary features for understanding the library. For more advanced examples, check out the examples in the \texttt{examples/} folder on GitHub \citep{pettersen2017proxcgithub}.
+This chapter introduces how \Proxc{} is used in C++ programs. Only the basics of \Proxc{} is presented, introducing all necessary features for understanding the library. First of all, \Proxc{} must be installed on the work environment. \Proxc{} is available for free as in beer on GitHub \citep{pettersen2017proxcgithub}. Following the install guide on the readme should be sufficient. For more advanced examples, check out the examples in the \texttt{examples/} folder on the GitHub project.
 
-First of all, ProXC++ must be installed on the work environment. ProXC++ is available free of charge on GitHub \citep{pettersen2017proxcgithub}, and following the install guide on the readme should be sufficient.
+All library related types and methods reside in the \lstinline[style={CustomC++}]|proxc| namespace, which will be omitted in all code examples. It is given the header file \lstinline[style={CustomC++}]|#include <proxc.hpp>| is included in all code examples shown in this chapter, as well as in all C++ files programming with ProXC+. The linker flag \lstinline[style={CustomC++}]|-lproxc| must also be passed during compilation.
 
-It is given the header file \lstinline[style={CustomC++}]|#include <proxc.hpp>| is included in all code examples shown in this chapter, as well as in all C++ files programming with ProXC++.
-
-The core feature of ProXC++ is lightweight processes called \texttt{Process}. These processes can communicate with each other via message\hyp{}passing, using \texttt{Channel}s. These channels allow for synchronous and safe communication. Simultaneous channel communication can be achieved through \texttt{Alting}. On top of this, several types of \texttt{Timer}s allows for soft real\hyp{}time requirements on different operations, such as channel operations and explicit process suspension.
-
-Programs using ProXC++ does not need to initialize or cleanup the library. This is done automatically by the library. The first API call to the library will initialize the library, and when main exits will the library cleanup. No cleanup will be performed unless the library has been initialized. 
+Programs using \Proxc{} does not need to initialize or cleanup the library. This is done automatically by the library. The first call to the library which invokes the runtime system will initialize the library, and the cleanup procedure is invoked when the program exits. No cleanup will be invoked unless the library has been initialized. 
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Processes}
 
 
-At the core of ProXC++ are lightweight processes. These processes is a separate scope of execution which can run concurrently with the rest of the program. In code, these processes are represented by a function and its corresponding arguments. This function must have a return type of \lstinline[style={CustomC++}]|void|, but can have any type and number of arguments. \cref{lst:code_example_process_func} shows a function which qualifies running as a process.
+At the core of \Proxc{} are lightweight processes. These processes is a separate scope of execution which can run concurrently with the rest of the program. In code, these processes are represented by a function and its corresponding arguments. The main function of any C++ program is also implicitly a process. This function must have a return type of \lstinline[style={CustomC++}]|void|, but can have any type and number of arguments. \Cref{lst:code_example_process_func} shows different function prototypes where some qualify running as a process and some do not.
 
 \begin{lstfloat}
-\begin{lstlisting}[caption={Example of process function.}, label={lst:code_example_process_func}, style={CustomC++}]
-void my_func(int x, std::string msg) {
-    some_other_func(x);
-    ... 
-    std::cout << msg;
-}
+\begin{lstlisting}[caption={Different function prototypes which do and do not qualify as a process.}, label={lst:code_example_process_func}, style={CustomC++}, xleftmargin={2em}]
+void good_func1();                // ok
+void good_func2(std::string msg); // also ok
+int         bad_func1();      // not ok, return type not void
+std::string bad_func2(int y); // also not ok
 \end{lstlisting}
 \end{lstfloat}
 
-Processes can be created and stored freely in any container, but can only be spawned with the \texttt{parallel} statement. The parallel statement takes one\hyp{}or\hyp{}more processes and runs them concurrently with the rest of the program, following the fork\hyp{}join model. The process calling the parallel statement is suspended until all processes has terminated.
+Processes are stored as process objects of the type \lstinline[style={CustomC++}]|Process|. These process objects can be created and stored freely in any container. A process object can be created explicitly with the object constructor, which takes a function pointer and its corresponding arguments. Or, a process object can be created implicitly with the library method \lstinline[style={CustomC++}]|proc|. \Cref{lst:process_creation} illustrates the difference.
+
+\begin{lstfloat}[h!]
+\begin{lstlisting}[caption={Process creation.}, label={lst:process_creation}, style={CustomC++}, xleftmargin={2em}]
+Process my_process{&my_func, arg1, arg2};
+auto other_process = proc(&other_func, other_arg);
+\end{lstlisting}
+\end{lstfloat}
+
+Process creation also has perfect forwarding of arguments, meaning any type of arguments being expensive to copy or being non\hyp{}copyable can correctly be moved into processes.
+
+A dynamic number of processes can also be created, which requires to either explicitly allocate each process before hand in any container or to generate them on the fly. The library method \lstinline[style={CustomC++}]|proc_for| takes either a pair of input iterators to any container of processes, or a pair of integers which defines the integer range $[\text{start},\text{end}\rangle$ and a function pointer which takes an integer as an argument. The method returns a process which runs the dynamic numbers of processes in parallel. See \cref{lst:dynamic_number_process_creation} for reference. Calling the \lstinline[style={CustomC++}]|proc_for| method only creates the parallel process, and does not run them.
+
+\begin{lstfloat}[h!]
+\begin{lstlisting}[caption={Creating a dynamic number of processes.}, label={lst:dynamic_number_process_creation}, style={CustomC++}, xleftmargin={2em}]
+std::vector<Process> procs;
+for (int i = 0; i < N; ++i) 
+    procs.emplace_back(&some_func, some_data[i]);
+auto total_procs = proc_for(procs.begin(), procs.end());
+// or
+auto total_procs = proc_for(0, N,
+    [&some_data](int i){ some_func(some_data[i]); });
+\end{lstlisting}
+\end{lstfloat}
+
+Creating a process is not useful if it cannot be executed in parallel with the rest of the system. The library function \lstinline[style={CustomC++}]|parallel| takes one\hyp{}or\hyp{}more processes and runs them in parallel, following the fork\hyp{}join model. The calling process will suspend until all parallel processes has terminated. See \cref{lst:example_parallel_statement} for reference.
 
 \begin{lstfloat}
-\begin{lstlisting}[caption={The parallel statement.}, label={lst:parallel_statement}, style={CustomC++}]
-std::vector< proxc::Process > funcs;
-...
-proxc::parallel(
-    proxc::proc(&my_func, 42, "Normal function\n"),
-    proxc::proc([](int y, std::string msg){
-        for (int i = 0; i < y; ++i) {
-            my_func(i, msg);
-        }
-    }, 1234, "Lambda function"),
-    proxc::proc_for(funcs.begin(), funcs.end()),@\label{line:parallel_container_replicator}@
-    proxc::proc_for(0, 10, &compute_something)@\label{line:parallel_range_replicator}@
+\begin{lstlisting}[caption={Example of the parallel statement.}, label={lst:example_parallel_statement}, style={CustomC++}, xleftmargin={2em}]
+std::vector<Process> procs;
+// ...
+parallel(
+    proc(&my_func, 42),
+    proc([](){ /* lambda function */ }),
+    proc_for(procs.begin(), procs.end()),
+    proc_for(0, N, &calculate_func)
 );
 \end{lstlisting}
 \end{lstfloat}
 
-\Cref{lst:parallel_statement} shows the different process definitions which can be called with the parallel statement. \texttt{proc} defines a single process, given function pointer and its corresponding arguments. \texttt{proc\_for} is a process replicator, generating a dynamic number of processes. A process replicator can either take a pre\hyp{}defined container of processes, shown in \cref{line:parallel_container_replicator}, or generate a number of processes given a range, shown in \cref{line:parallel_range_replicator}.
+Process objects are non\hyp{}copyable but movable, meaning the ownership of process objects must be moved between scopes. A process object is of one time use. After a process has executed and terminated, the process object cannot be run again. The process object must be constructed once more to be executed again. 
 
-Process creation also has perfect forwarding of arguments, meaning any type of arguments being expensive to copy or being non\hyp{}copyable can correctly be moved into processes.
+In any process context, a set of operations are available for the current running process, accessible in the \lstinline[style={CustomC++}]|this_proc| namespace. The operations includes getting the current process id, yielding, and suspending for a given duration or until a time point. The suspension operations supports time types from the standard library \lstinline[style={CustomC++}]|std::chrono|. See \cref{lst:per_process_operations} for reference.
+
+\begin{lstfloat}
+\begin{lstlisting}[caption={Per process operations for the current executing process.}, label={lst:per_process_operations}, style={CustomC++}, xleftmargin={2em}]
+auto id = this_proc::get_id();
+this_proc::yield();
+this_proc::delay_for(/* duration */);
+this_proc::delay_until(/* time point */);
+\end{lstlisting}
+\end{lstfloat}
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Timers}
+\label{sec:timer_example}
 
 
-Three types of timers are available in ProXC++: egg, repeat and date timers. Timers allow for soft real\hyp{}time requirements on certain operations. All timers have support for time period and duration declarations using the standard time library \lstinline[style={CustomC++}]|std::chrono|.
+Three types of timers are available in \Proxc{}: egg, repeat and date timers. Timers allow for soft real\hyp{}time requirements on certain operations. All timers have support for time period and duration declarations using the standard time library \lstinline[style={CustomC++}]|std::chrono|.
 
-Egg timers are used for relative timeout periods. Just as an egg timer in real life, the timer is starts when the operation starts, and expires when the time period has passed. The egg timer can be reused after expiration, as the countdown is reset every time it is supplied for an operation. In a sense, the timer does not ``survive'' between multiple operations, as it resets.
+All timer objects reside in the \lstinline[style={CustomC++}]|timer| namespace. Timer objects are constructed with a supplied appropriate duration or time point, and are both copyable and movable. See \cref{lst:creating_timers} for reference. 
 
-Repeat timers are used for periodic timeout periods. Given a time duration, the repeat timer will expire every period equal to the time duration. When supplied with an operation, the repeat timer does not reset. Only when it expires does it reset, basically setting the next timeout point to a period forward in time. Repeat timers do ``survive'' between multiple operations, as only when the expiration is registered does it reset. 
+\begin{lstfloat}
+\begin{lstlisting}[caption={Constructing different timers.}, label={lst:creating_timers}, style={CustomC++}, xleftmargin={2em}]
+timer::Egg    egg{/* duration */};
+timer::Repeat rep{/* duration */};
+timer::Date   date{/* time point */};
+\end{lstlisting}
+\end{lstfloat}
+
+Egg timers are used for relative timeout periods. Just as an egg timer in real life, the timer starts when the operation starts, and expires when the time period has passed. The egg timer can be reused after expiration, as the countdown is reset every time it is supplied for an operation. In a sense, the timer does not ``survive'' between multiple operations, as it resets.
+
+Repeat timers are used for periodic timeout periods. Given a time duration, the repeat timer will expire every period equal to the time duration. When supplied with an operation, the repeat timer does not reset. Only when it expires does it reset, basically setting the next timeout point to the next period forward in time. Repeat timers do ``survive'' between multiple operations, as only when it expires does it reset. 
 
 Date timers are used for absolute timeout periods. Given a time point, the date timer will expire when current time point has surpassed the given time point. The date timer does ``survive'' between multiple operations, however will always stay expired after timeout. 
 
@@ -76,97 +112,121 @@ Date timers are used for absolute timeout periods. Given a time point, the date 
 \section{Channels}
 
 
-Processes uses message\hyp{}passing to communicate, which is realized through channels. Channels in ProXC++ are synchronous, unbuffered, unidirectional, and type safe. 
+Processes uses message\hyp{}passing to communicate, which is realized through channels. The philosophy of CSP\hyp{}based concurrency is processes should not share memory directly, as this is a potent problem often leading to race conditions. Rather, the processes should share memory by communicating, i.e. message\hyp{}passing with channels.
 
-The philosophy is processes should not share memory directly, as this is a potent problem often leading to race conditions. Rather, the processes should share memory by communicating, i.e. message\hyp{}passing with channels.
+Channels in \Proxc{} exist only in one flavour: synchronous and unbuffered, unidirectional, one\hyp{}to\hyp{}one and type safe. Channel objects are of the type \lstinline[style={CustomC++}]|Chan<T>|, and takes no additional arguments in its constructor. Channel objects are non\hyp{}copyble but movable.
 
-All channel related functions and types reside in the \lstinline[style={CustomC++}]|proxc::channel| namespace. Channels consists of two complementary ends, the sending and receiving ends, which are called \lstinline[style={CustomC++}]|Tx| and \lstinline[style={CustomC++}]|Rx|. As the name implies, the two channel ends can only send or receive data, respectively. A channel end can only have single owner, meaning they are non\hyp{}copyable. Passing a channel end to an another process must pass the ownership of that channel end. When creating a channel, the two channel end objects \lstinline[style={CustomC++}]|Tx| and \lstinline[style={CustomC++}]|Rx| are returned in a \lstinline[style={CustomC++}]|std::tuple|.
+A channel object is a named tuple, containing the two channel end objects \lstinline[style={CustomC++}]|Chan<T>::Tx| and \lstinline[style={CustomC++}]|Chan<T>::Rx|, The channel ends \lstinline[style={CustomC++}]|Tx| and \lstinline[style={CustomC++}]|Rx| can respectively send and receive on the channel. Channel end objects are also non\hyp{}copyable but movable.
 
-Channels are templated, making them type safe. Channel transmission also has perfect forwarding, meaning any type being expensive to copy or being non\hyp{}copyable can correctly be moved between processes.
-
-A single channel can be created with the \lstinline[style={CustomC++}]|create<T>()| function, while $n$ channels can be created with the \lstinline[style={CustomC++}]|create_n<T>(n)| function. Channel ends can be extracted from the tuple with the convenience functions \lstinline[style={CustomC++}]|get_tx| and \lstinline[style={CustomC++}]|get_rx| for a single channel, and functions \lstinline[style={CustomC++}]|get_tx_ind| and \lstinline[style={CustomC++}]|get_rx_ind| for numerous channels. \Cref{lst:channel_creation} demonstrates channel creation and channel end extraction.
+Channel ends can be access directly from the channel object via the class methods \lstinline[style={CustomC++}]|ref_tx| and \lstinline[style={CustomC++}]|ref_rx|, which returns a reference to the channel end objects. Channel end objects can also be moved from the channel object with the class methods \lstinline[style={CustomC++}]|move_tx| and \lstinline[style={CustomC++}]|move_rx|. See \cref{lst:channel_creation} for reference.
 
 \begin{lstfloat}
-\begin{lstlisting}[caption={Channel creation and channel end extraction.}, label={lst:channel_creation}, style={CustomC++}]
-// using convenience functions
-auto ch = proxc::channel::create<int>();
-auto tx = proxc::channel::get_tx(ch);
-auto rx = proxc::channel::get_rx(ch);
-// using std::tie
-proxc::channel::Tx<int> tx;
-proxc::channel::Rx<int> rx;
-std::tie(tx, rx) = proxc::channel::create<int>();
-// with C++17 structured bindings
-auto [ tx, rx ] = proxc::channel::create<int>();
+\begin{lstlisting}[caption={Channel creation and channel end access.}, label={lst:channel_creation}, style={CustomC++}, xleftmargin={2em}]
+Chan<std::string> channel;
+/* channel end access */
+channel.ref_tx();  /* and */ channel.ref_rx();
+/* channel end move */
+channel.move_tx(); /* and */ channel.move_rx();
 \end{lstlisting}
 \end{lstfloat}
 
-Note that after extracting a channel end removes it entirely from the tuple. Trying to extract the same channel end twice from the same tuple is therefore undefined behaviour. 
+Given a channel of type \lstinline[style={CustomC++}]|Chan<T>|, the channel end objects \lstinline[style={CustomC++}]|Tx| and \lstinline[style={CustomC++}]|Rx| can send data of the type \lstinline[style={CustomC++}]|T| over the channel. Channel transmissions has perfect forwarding of data.
 
-Channel ends can either transmit data through methods or operator overloading. See \cref{lst:channel_operation_operator_overloading} for reference.
+The channel end object \lstinline[style={CustomC++}]|Tx| can either send data with the class method \lstinline[style={CustomC++}]|send| or with the overloaded \lstinline[style={CustomC++}]|operator<<|. The class method returns the explicit result of the operation, while the overloaded operator only returns a boolean of whether the operation was a success or not. See \cref{lst:sending_channel_end} for reference.
 
 \begin{lstfloat}
-\begin{lstlisting}[caption={Channel operation and operator overloading.}, label={lst:channel_operation_operator_overloading}, style={CustomC++}]
-// these two expressions are equivalent
-tx.send(data);
-tx << data;
-// these two expressions are equivalent
-rx.recv(data);
-rx >> data;
+\begin{lstlisting}[caption={Sending on the Tx channel end object.}, label={lst:sending_channel_end}, style={CustomC++}, xleftmargin={2em}]
+Chan<long> channel;
+auto tx = channel.move_tx();
+auto op_result = tx.send(some_data); 
+/* or */
+bool success = tx << some_data;
 \end{lstlisting}
 \end{lstfloat}
 
-Channel ends can also be piped, which is the same as sending the output of a receiving channel end as the input of a sending channel end. The piped operation returns a boolean value indicating if the operation succeeded or not. See \cref{lst:channel_end_piping} for an example of channel end piping.
+The channel end object \lstinline[style={CustomC++}]|Rx| can either receive data with the class method \lstinline[style={CustomC++}]|recv| or with the overloaded \lstinline[style={CustomC++}]|operator>>|. An important difference from the sending operations is the receive data must be preallocated before calling the receive methods. However, the return types resembles the return types of sending. See \cref{lst:receiving_channel_end} for reference.
 
 \begin{lstfloat}
-\begin{lstlisting}[caption={Channel end piping.}, label={lst:channel_end_piping}, style={CustomC++}]
-void some_process(proxc::channel::Tx<long> tx,
-                  proxc::channel::Rx<long> rx) {
-    while (tx << rx) {}
+\begin{lstlisting}[caption={Receiving on the Rx channel end object.}, label={lst:receiving_channel_end}, style={CustomC++}, xleftmargin={2em}]
+Chan<long> channel;
+auto rx = channel.move_rx();
+long some_data; // received data must be preallocated!
+auto op_result = rx.recv(some_data); 
+/* or */
+bool success = tx >> some_data;
+\end{lstlisting}
+\end{lstfloat}
+
+Both channel end objects overload \lstinline[style={CustomC++}]|operator()| for inline sending and receiving. However, inline channel operations does not return any indications whether the channel operation was a success or not. See \cref{lst:inline_channel_operations} for reference.
+
+\begin{lstfloat}
+\begin{lstlisting}[caption={Inline channel operations.}, label={lst:inline_channel_operations}, style={CustomC++}, xleftmargin={2em}]
+Chan<T>::Tx tx; Chan<T>::Rx rx;
+tx(data); // returns void
+rx();     // returns T
+\end{lstlisting}
+\end{lstfloat}
+
+A channel has a notion of being open or closed. A channel always starts as being open. When a channel is closed, no more channel transmission can be completed. A closed channel forever remains closed until destroyed. A channel becomes closed either by a channel end explicitly closing the channel with the class method \lstinline[style={CustomC++}]|close|, or a channel end object goes out of scope and is deallocated. A channel end can test whether the channel is closed or not with the class method \lstinline[style={CustomC++}]|is_closed|, which returns true for a closed channel and false otherwise.
+
+The channel end object \lstinline[style={CustomC++}]|Rx| supports for range\hyp{}based for loops, retrieving data as long as the channel is open. When the channel becomes closed, the for loop automatically break. See \cref{lst:range_based_for_loops_channel} for reference.
+
+\begin{lstfloat}
+\begin{lstlisting}[caption={Range\hyp{}based for loops with the receving channel end.}, label={lst:range_based_for_loops_channel}, style={CustomC++}, xleftmargin={2em}]
+Chan<T>::Rx rx;
+for (auto data : Rx) {
+    /* do some work */
 }
+/* here, channel is closed */
 \end{lstlisting}
 \end{lstfloat}
 
-Channel operations can also be timed by any of the ProXC++ timers, or direct use of the time library \lstinline[style={CustomC++}]|std::chrono|. 
+A receiving channel end can pipe its input into a sending channel end, meaning all data received on the receiving channel end is forwarded as the output on a sending channel end. The overloaded \lstinline[style={CustomC++}]|operator>>| is used to pipe data between a receiving and sending channel end, which returns a boolean indicating success or not. A successful piping is only when data is successfully received and sent. If either operations fail, the piping operation failed as well. See \cref{lst:piping_channel_end} for reference.
 
-Processes can signal each other certain termination signals through closing channels. A channel remains closed after being closed. A channel can either be closed explicitly by a process closing a channel end, or a channel end going out of scope. A process can directly test whether a channel end is closed, or by inspecting the return result of a channel operation.
-
-To simplify this closing concept, range\hyp{}based for loop semantics is implemented for receiving channel ends. The for loop will continue to read from the channel end, and exit when the channel end closes. See \cref{lst:channel_for_loop} for an example.
 
 \begin{lstfloat}
-\begin{lstlisting}[caption={Range\hyp{}based for loop semantics for receiving channel ends.}, label={lst:channel_for_loop}, style={CustomC++}]
-void some_process(proxc::channel::Rx<int> rx) {
-    for (auto data : rx) {
-        compute(data);
-    }
-}
+\begin{lstlisting}[caption={Piping from a receiving to sending channel end object.}, label={lst:piping_channel_end}, style={CustomC++}, xleftmargin={2em}]
+Chan<T>::Tx tx; Chan<T>::Rx rx;
+while (rx >> tx) { /* piping is successful */ }
+/* piping failed */
 \end{lstlisting}
 \end{lstfloat}
+
+Lastly, a channel send or receive operation can be timed. A time duration or time point from the standard library \lstinline[style={CustomC++}]|std::chrono| can be supplied with a channel operation. The channel operation will try to complete within the specified time, and returns either if the operation completed or timed out. The return value of the timed operation specifies the reason for the channel operation to returned.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Alting}
 
 
-If a process were to wait on multiple channel ends simultaneously, normal channel operations would not suffice. The alting construct however allows a process to do simultaneously wait on different alternatives. These alternatives include channel send and receive, as well as timeouts and skip.
+If a process were to wait on multiple channel ends simultaneously, normal channel operations would not suffice. The alting construct however allows a process to simultaneously wait on multiple channel operations and complete one when one becomes ready. The channel operations, together with timeouts and skips, makes up what is called alting alternatives.
 
-The alting procedure allows a process to synchronously wait for multiple alternatives, and choose one when one\hyp{}or\hyp{}more are ready. A corresponding closure, which can be anything callable, is then executed if present. When the alting procedure finishes, including the executed closure has returned, the processes that is alting resumes execution.
+The four alternatives are as follows: channel send and receive takes an appropriate channel end and data, and performs the given channel operation. A timeout specifies a timer and wait until that timer has expired. A skip is always ready, much like the default keyword in a switch construct. 
 
-Alting contains zero\hyp{}or\hyp{}more alternatives, where the alting procedure waits for these alternatives to become ``ready''. When one\hyp{}or\hyp{}more alternatives are ready, the alting procedure chooses one alternative and executes a corresponding closure. Alternatives can be guarded by a boolean condition, which enables or disables an alternative for the alting procedure depending on the condition.
+The alting procedure allows a process to synchronously wait for multiple alternatives. The alting procedure block the calling process until one of the alternatives can complete, and completes that alternative. A corresponding closure, which can be anything callable, is then executed if present. When the alting procedure finishes, including the executed closure has returned, the process resumes.
 
-An alting procedure starts with creating an alting object. This alting object can create alternatives by function chaining multiple alternative methods, and lastly call a selection method which consumes the alting object and resolves the alting procedure.
+An alting procedure consists of zero\hyp{}or\hyp{}more alternatives, where the alting procedure waits for these alternatives to become ``ready''. When one\hyp{}or\hyp{}more alternatives are ready, the alting procedure chooses one alternative and executes a corresponding closure. Alternatives can be guarded by a boolean condition, which enables or disables an alternative for the alting procedure depending on the condition.
+
+An alting procedure starts with creating an alting object of the type \lstinline[style={CustomC++}]|Alt|. This alting object can create alternatives by function chaining multiple alternative methods, and lastly call a selection method which consumes the alting object and resolves the alting procedure. See \cref{lst:alting_procedure} for reference.
 
 \begin{lstfloat}
-\begin{lstlisting}[caption={Example of the alting construct.}, label={lst:alting_procedure}, style={CustomC++}]
+\begin{lstlisting}[caption={Example of the alting construct.}, label={lst:alting_procedure}, style={CustomC++}, xleftmargin={2em}]
 Alt()
     .send(tx, 42)
     .recv_if(cond1, rx)
     .timeout(timer, &timeout_func)
-    .skip_if(cond2, &skip_func)
+    .skip_if(cond2, [](){
+        /* skip lambda */
+    })
     .select();
 \end{lstlisting}
 \end{lstfloat}
 
-The four alternative types channel send, channel receive, timeout and skip has the corresponding alternative methods \lstinline[style={CustomC++}]|send|, \lstinline[style={CustomC++}]|recv|, \lstinline[style={CustomC++}]|timeout| and \lstinline[style={CustomC++}]|skip|, respectively. Each alternative method can prepend a guard with a boolean condition by calling the altered alternative method, which has an appended \lstinline[style={CustomC++}]|_if| to the method name, e.g. \lstinline[style={CustomC++}]|send_if|. All alternative methods, both with and without a guard, can have an optional closure. See \cref{lst:alting_procedure} for reference.
+The four alternative types channel send, channel receive, timeout and skip has the corresponding alternative methods \lstinline[style={CustomC++}]|send|, \lstinline[style={CustomC++}]|recv|, \lstinline[style={CustomC++}]|timeout| and \lstinline[style={CustomC++}]|skip|, respectively. 
 
-The four alternatives are as follows: channel send and receive takes an appropriate channel end and data, and performs the given channel operation. A timeout specifies a timer and wait until that timer has expired. A skip is always ready, much like the default keyword in a switch construct. 
+Each alternative method can prepend a guard with a boolean condition by calling the altered alternative method, which has an appended \lstinline[style={CustomC++}]|_if| to the method name, e.g. \lstinline[style={CustomC++}]|send_if|. All alternative methods, both with and without a guard, can have an optional closure. See \cref{lst:alting_procedure} for reference.
+
+A dynamic number of channel send and receive alternatives can be generated. The class methods \lstinline[style={CustomC++}]|send_for| and \lstinline[style={CustomC++}]|recv_for| takes a pair of iterators to any container with the appropriate channel end object, and generates a correposnding alternative for each channel end. The class methods can also be guarded, following the same naming scheme as the single alternative methods. 
+
+The timer alternatives takes on of the three timer types presented in \cref{sec:timer_example}. 
+

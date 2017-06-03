@@ -99,7 +99,7 @@ Only the scheduler for which the initial main context resides on will begin as r
 \label{subsec:process_implementation}
 
 
-Processes are a vital part of ProXC++. As stated many times before, processes represents some kind of computation of the total program, which in code translates to running a function concurrently with the rest of the system. Constructing a process requires to supply a function pointer and its corresponding arguments. The process object constructs a context object out the function pointer and arguments, and stores an intrusive pointer to the context object as a data member. In other words, the process is no more than an opaque type to a context object. The programmer implicitly creates new contexts through processes, while the scheduler under the hood operates on the contexts. See \cref{lst:process_type} for reference.
+Processes are a vital part of \Proxc{}. As stated many times before, processes represents some kind of computation of the total program, which in code translates to running a function concurrently with the rest of the system. Constructing a process requires to supply a function pointer and its corresponding arguments. The process object constructs a context object out the function pointer and arguments, and stores an intrusive pointer to the context object as a data member. In other words, the process is no more than an opaque type to a context object. The programmer implicitly creates new contexts through processes, while the scheduler under the hood operates on the contexts. See \cref{lst:process_type} for reference.
 
 \begin{lstfloat}
 \begin{lstlisting}[caption={Minimal process type.}, label={lst:process_type}, style={CustomC++}, xleftmargin={2em}]

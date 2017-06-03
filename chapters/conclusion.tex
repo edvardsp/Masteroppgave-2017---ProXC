@@ -8,25 +8,33 @@
 \chapter{Conclusion}
 \label{ch:conclusion}
 
-Concurrent programming has long existed before multicore processors entered the mainstream market. With the ever increasing use of multicore processors, the demand for software which are scalable and fully utilize these processors are becoming more evident, and concurrent programming is the tool to realize such software.
+Concurrent programming has long existed before multicore processors entered the mainstream market. With the ever increasing use of multicore processors, the demand for software which are scalable and fully utilize said processors are becoming more evident, and concurrent programming is the tool to realize such software.
 
-For many programmers, it is hard to write correct concurrent systems with concurrent programming, and usually fail to utilize the available multiple processor cores. Communicating Sequential Processes (CSP) is a formal language for describing concurrent systems, which provides a safer abstraction level by limiting all communication between processes to message\hyp{}passing. CSP also enables reasoning on concurrent systems whether the described system is correct or not.
+For many programmers, it is hard to write correct concurrent systems with concurrent programming, and especially fail to utilize the available multiple processor cores. Communicating Sequential Processes (CSP) is a formal language for describing concurrent systems, which provides a safer yet expressive abstraction level by limiting all communication between processes to message\hyp{}passing. CSP also allows to reason about the correctness of the concurrent system, whether certain specifications are met and etc. CSP\hyp{}influenced concurrency has long been proven to serve as a powerful abstraction for creating concurrent systems.
 
-The work on this thesis is motivated by creating a library for C++ programs which fully utilizes available processor cores combined with the safe and correct parallel nature of CSP. The ambition is that this library should make it easier to create correct concurrent systems which are scalable and performant with multicore processors, as well as using concurrency fearlessly. 
+This thesis argues that by combining the parallel nature of CSP with a dynamic multithreaded runtime system, correct and expressive high performance concurrent programs can be created which are able to fully utilize and scale with the increase of required parallelism in multicore processors.
 
-The work and results presented in this thesis should prove helpful for designing and implementing other multicore CSP libraries. Especially, the work on designing and implementing a runtime system for multicore scheduling should prove useful for similar projects.
+The work presented in this thesis is the development of a design and implementation of \Proxc{}: a CSP\hyp{}inspired concurrency library for C++. \Proxc{} uses dynamic multithreading to effectively utilize all available logical cores on any multicore processor. The dynamic multithreading is implemented by having a number of runtime schedulers, equal to the available logical cores, each running on its kernel\hyp{}thread. The runtime schedulers employs work stealing for load balancing work dynamically. 
 
+\Proxc{} and other CSP\hyp{}influenced concurrency libraries with dynamic multithreading were benchmarked. The results from the benchmarks showed \Proxc{} to be quite performant compared to the well established programming language Go. However, some results highlighted underlying issues with the runtime system, especially how the work stealing scheme for the runtime schedulers were flawed in certain situations.
 
+The work done on \Proxc{} should prove useful for designing and implementing runtime systems for dynamic multithreaded CSP\hyp{}based concurrency frameworks. Especially, the design and implementation of the runtime scheduler could in itself be useful for other dynamic multithreaded concurrency frameworks, and not necessarily only for CSP\hyp{}based concurrency frameworks.
+
+A set of potential candidates for future work was identified and outlined for \Proxc{}. Improving the runtime scheduler and the work stealing efficiency is probably the most sought after improvement, which would only increase the multicore performance of the library. Another sought out feature is asynchronous IO operations, which would open up implementing support for networking.
+
+In conclusion, CSP has been proven to provide powerful abstractions for which can be exploited by multicore processors. There is no denying dynamic multithreaded frameworks are the future of high performance systems on multicore processors, and \Proxc{} is one more example showing the potentiality CSP has on such systems.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Availability}
 
-ProXC++ is available online, open\hyp{}source and free of charge, on GitHub \citep{pettersen2017proxcgithub}. Any contributions to the library are welcomed. Any inquiries regarding the thesis or the library can contact the author via mail, \href{mailto:edvard.pettersen@gmail.com}{edvard.pettersen@gmail.com}, or through the project page on GitHub.
+
+\Proxc{} is available online, open\hyp{}source and free as in beer, on GitHub \citep{pettersen2017proxcgithub}. Any contributions to the library are welcomed. Any inquiries regarding this thesis or the library can contact the author via mail, \href{mailto:edvard.pettersen@gmail.com}{edvard.pettersen@gmail.com}, or through the project page on GitHub.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Acknowledgment}
-% øyvind timers
 
-I would like to thank Øyvind Teig for the ideas and definitions of the egg, repeat and date timers. Further, I would also like to thank both Øyvind Teig and Sverre Hendseth for our interesting discussions about CSP related topics.
+
+I would like to thank Øyvind Teig for the ideas and definitions of the egg, repeat and date timers.
+

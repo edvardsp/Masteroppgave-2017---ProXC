@@ -9,20 +9,20 @@
 \label{ch:design}
 
 
-First of all, ProXC++ is a concurrency library for C++. Only recently as of C++11 has the C++ programming language added concurrency primitives to the standard library, such as threading and futures. However, C++ lacks any standard support for concurrency in user space. 
+First of all, \Proxc{} is a concurrency library for C++. Only recently as of C++11 has the C++ programming language added concurrency primitives to the standard library, such as threading and futures. However, C++ lacks any standard support for concurrency in user space. 
 
 Designing a concurrency library for C++ with dynamic multithreading requires some notion of user space threading mechanism, which in turn requires a runtime system. This runtime system acts as an invisible layer between the program and the operating system, handling resources and logistics of scheduling the different processes running in the program. 
 
 All library functionality, such as channels, builds upon the framework provided by the runtime system. Essentially, anything must be done via the runtime system, which is why the limitations of the runtime system functionality limits the potentiality of the library functionality.
 
-This chapter contains a full design of ProXC++, and explains some of the design choices. The runtime system is first designed, and subsequently the library features are designed based on the runtime system functionality. 
+This chapter contains a full design of \Proxc{}, and explains some of the design choices. The runtime system is first designed, and subsequently the library features are designed based on the runtime system functionality. 
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Runtime System}
 
 
-Before discussing the design of the runtime system, lets first identify what the responsibilities of the runtime system are. A ProXC++ program contains a set of processes, where each process represents some point of execution. The runtime system must be able to spawn, schedule, and synchronize these processes, i.e. process management. A scheduler could therefore be responsible for process management. 
+Before discussing the design of the runtime system, lets first identify what the responsibilities of the runtime system are. A \Proxc{} program contains a set of processes, where each process represents some point of execution. The runtime system must be able to spawn, schedule, and synchronize these processes, i.e. process management. A scheduler could therefore be responsible for process management. 
 
 For a singlecore runtime system, only a single scheduler makes sense. However, how many schedulers are optimal for a dynamic multithreaded runtime system? Given the maximum number of parallel executions on a processor is equal to the number of available processor cores, the optimal number of schedulers is the number of available processor cores, and each scheduler runs on its own processor core. If more schedulers where online than available processor cores, situations would occur were multiple schedulers are struggling to run on the same processor core, which would be unproductive.
 
@@ -30,7 +30,7 @@ Another important factor is how process management is shared among schedulers. T
 
 A centralized management is easy to implement, as the entire runtime system such as control structures and processes  is shared between schedulers. Schedulers does not have to worry about distributing processes for scheduling, as all processes are scheduled through the same queue. However, it does not scale as well with an increase in processor cores, as it creates contention between the increase in schedulers accessing the shared control structures. Distributed management is much harder to implement, as now each scheduler has its own set of control structures and processes. The main issue is how to efficiently distribute ready processes between schedulers. If done right, distributed management scales very well with an increase in processor cores.
 
-Given that ProXC++ aims to be a high\hyp{}performance concurrency library, distributed process management is necessary for catering to all multicore architectures.
+Given that \Proxc{} aims to be a high\hyp{}performance concurrency library, distributed process management is necessary for catering to all multicore architectures.
 
 To summarize, the runtime systems consists of a number of schedulers equal to the number of available processor cores. Process management is distributed among the schedulers, meaning each scheduler has responsibility of a set of processes.
 
@@ -54,6 +54,7 @@ Work stealing is usually preferred over work sharing as it causes less process m
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Processes}
+\label{subsec:processes}
 
 
 Processes represent some point of execution. As stated above, all work processes has a parent scheduler which corresponds to the scheduler running on a particular processor core. A scheduler is also a process but differs from work processes, as a work process represents meaningful work from the running program. 
@@ -90,7 +91,7 @@ Date timer is used for absolute timeout. It is a one\hyp{}shot timer, and will a
 \label{subsec:fork_join_parallelism}
 
 
-Processes can spawn new processes in parallel with the \textit{parallel} statement. The parallel statement takes one or more processes, either as single process statements or process replicators, and spawns and runs these processes in parallel. The spawned processes runs concurrently with any other processes currently running in the program. The parallel statement is the only way to spawn new processes with ProXC++.
+Processes can spawn new processes in parallel with the \textit{parallel} statement. The parallel statement takes one or more processes, either as single process statements or process replicators, and spawns and runs these processes in parallel. The spawned processes runs concurrently with any other processes currently running in the program. The parallel statement is the only way to spawn new processes with \Proxc{}.
 
 The parallel statement follows the fork\hyp{}join model \citep[page 88]{mccool2012structured}, where a sequential execution branches off at a designated point into parallel work, and subsequently joins/merges at another designated point and resumes the original sequential execution. \Cref{fig:fork_join_model} gives a simple illustration of the fork\hyp{}join model.
 
@@ -135,7 +136,7 @@ Ensuring both Tx and Rx agrees on the type of message being transmitted has to d
 
 Channels has a notion of being open or closed. An open channel operates as normal, but a closed channel will deny any operations being completed. A channel always starts as open, and can be closed in on of two ways: an explicit close from either participant, or one of two channel ends goes out of scope, i.e. is no longer available. When a channel becomes closed it remains closed. A closed channel is used to signal participants when no more values will be sent on the channel, which is useful to communicate completion to the opposite channel end.
 
-Considering the different channel factors above, channels in ProXC++ are synchronous and unbuffered, unidrectional, one\hyp{}to\hyp{}one and type safe.
+Considering the different channel factors above, channels in \Proxc{} are synchronous and unbuffered, unidrectional, one\hyp{}to\hyp{}one and type safe.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -182,8 +183,6 @@ The work stealing algorithm centers around the ready queue. As long as the sched
     \item \textbf{Try stealing} -- the current scheduler tries to steal some work processes from the victim. If failed, restart procedure;
     \item \textbf{Resume work} -- else, the stolen work processes are stored in the ready queue, and a work process is resumed.
 \end{enumerate}    
-\caption{Observations for both non\hyp{}alting and alting channel ends.}
-    \label{list:conjecture_both}
 \end{enumeratefloat}
 
 As simple as the algorithm sounds, some details must be taken into consideration. Is it feasible for an idle scheduler to repeatedly retrying to steal work until it succeeds? Stealing a process is the same as process migration, and process migration does cause some overhead. Consider the following programs which has a few number of parallel processes or many dependent processes. An aggressive work stealing scheme would cause many unnecessary process migrations, compared to none for a singlecore runtime system. 
@@ -254,7 +253,7 @@ A channel operation for a non\hyp{}alting channel end can be considered to consi
 
 Note that the entire procedure is surrounded by mutual exclusion using the channel lock, because the channel ends must arrive at the channel in a sequential order.
 
-To elaborate on step \ref{step:channel_nonalt_complete}, selecting the opposite channel end is necessary since an alting opposite channel end is not committal to the channel operation, even though it is present. Selecting a non\hyp{}alting channel end is always successful since it is always committal, while an alting channel end may fail. This selection process is further explained in \cref{sec:alternation}.
+To elaborate on step \cref{step:channel_nonalt_complete}, selecting the opposite channel end is necessary since an alting opposite channel end is not committal to the channel operation, even though it is present. Selecting a non\hyp{}alting channel end is always successful since it is always committal, while an alting channel end may fail. This selection process is further explained in \cref{subsec:alting_design}.
 
 Completing the transmission in step \ref{step:channel_nonalt_complete} involves transmitting the item and setting the consumed flag, and checking the transmission in step \ref{step:channel_nonalt_wait} involves checking and resetting the consumed flag.
 

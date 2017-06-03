@@ -1,5 +1,6 @@
 \usepackage[utf8]{inputenc} % This defines the font-encoding you prefer to use
-\usepackage{fourier}
+%\usepackage{fourier} % font
+\usepackage[libertine,cmintegrals,cmbraces,vvarbb]{newtxmath}
 \pagestyle{headings}
 \usepackage{marvosym}
 \usepackage[pdftex]{graphicx}
@@ -42,6 +43,13 @@
 \setcounter{tocdepth}{2} 
 \usepackage[colorlinks=false, pdfstartview=FitV]{hyperref}
 \pdfcompresslevel=9
+
+% custom names
+
+\def\Cpp{C\texttt{++}}
+\def\Proxc{ProX\Cpp{}}
+\def\Cppcsp2{\Cpp{}CSP2}
+\def\Cppcsp{\Cpp{}CSP}
 
 % hyphenation rules
 
