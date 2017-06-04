@@ -16,7 +16,7 @@ This chapter introduces \Proxc{}, the library developed for this thesis. The spe
 \label{sec:library_overview}
 
 
-\Proxc{} (pronounced ``proxy plus plus'') is a CSP\hyp{}influenced concurrency library for modern \Cpp{}, specifically aimed at multiprogrammed parallel programs. Modern \Cpp{} in this regard meaning support for \Cpp{}14 standard and later. The central ambition of \Proxc{} is to provide expressive and safe concurrency to \Cpp{} programs which fully and effectively utilizes available computational resources on multicore architectures.
+\Proxc{} (pronounced ``proxy plus plus'') is a CSP\hyp{}influenced concurrency library for modern \Cpp{}, specifically aimed at multiprogrammed parallel programs. Modern \Cpp{} in this regard meaning support for \Cpp{}14 standard and later. The central ambition of \Proxc{} is to provide expressive and safe concurrency to \Cpp{} programs which fully and effectively utilizes available computational resources on multi\hyp{}core architectures.
 
 \Proxc{} is a runtime system using a hybrid threading model. Work stealing is employed for load balancing between the schedulers, each running on an available logical processor core. 
 
@@ -33,7 +33,7 @@ The name ``\Proxc{}'' is a continuation of the original library ProXC \citep{pet
 The complete set of features in \Proxc{} is as follows:
 
 \begin{itemize}[topsep=0em,itemsep=-1em,partopsep=0.5em,parsep=1em]
-    \item Multicore support by default
+    \item Multi\hyp{}core support by default
     \item Lightweight threads called processes
     \item Per process operations via a separate namespace
     \item Channels; synchronous, unidirectional, type\hyp{}safe, one\hyp{}to\hyp{}one message\hyp{}passing between processes
@@ -52,7 +52,6 @@ The complete set of features in \Proxc{} is as follows:
 \section{Library API}
 \label{sec:library_api}
 
-FIXME, cppreference style?
 
 Including \Proxc{} in code requires including the header file \lstinline[style={CustomC++}]|#include <proxc.hpp>|. All API related types and methods resides in the \lstinline[style={CustomC++}]|proxc| namespace. 
 

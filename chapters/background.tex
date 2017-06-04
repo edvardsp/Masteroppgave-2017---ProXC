@@ -38,7 +38,7 @@ Threading is the foundation of concurrency, which allows multiple computations t
 \subsubsection{User\hyp{}Threading}
 
 
-User\hyp{}threads are a cooperative scheduling of threads executed in user space\footnote{Regarding operating systems, user space is a set of locations where normal user processes run}, and is called a \texttt{M:1} threading model. \texttt{M:1} means running \texttt{M} user\hyp{}threads on a single kernel\hyp{}thread. These user\hyp{}threads must cooperate on scheduling as the scheduling is non\hyp{}preemptive, meaning a running task is executed until completion or yields. Context switching and scheduling between these user\hyp{}threads is happening unbeknownst to the OS, resulting in much faster context switch times. Consequently, the OS cannot however help with scheduling, and blocking calls in any user\hyp{}thread blocks all user\hyp{}threads on the given kernel\hyp{}thread. Only one user\hyp{}thread can run on a kernel\hyp{}thread at any given moment.
+User\hyp{}threads are a cooperative scheduling of threads executed in user space\footnote{Regarding operating systems, user space is a set of locations where normal user processes run}, and is called a \texttt{M:1} threading model. \texttt{M:1} means running \texttt{M} user\hyp{}threads on a single kernel\hyp{}thread. These user\hyp{}threads must cooperate on scheduling as the scheduling is non\hyp{}preemptive, meaning a running task is executed until completion or yields. Context switching and scheduling between these user\hyp{}threads is happening unbeknownst to the OS, resulting in much faster context switch times. Consequently, the OS cannot however help with scheduling, and system blocking calls in any user\hyp{}thread blocks all user\hyp{}threads on the given kernel\hyp{}thread. Only one user\hyp{}thread can run on a kernel\hyp{}thread at any given moment.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -222,7 +222,7 @@ mutex_B.signal()
 \subsubsection{Livelock}
 
 
-Livelock is similar to deadlock, as it is a state in which processes are not blocked, but are refrained from making progression. A livelock can occur when e.g. processes are to busy responding to each other to resume work. 
+Livelock is similar to deadlock, as it is a state in which processes are not blocked, but are refrained from making progression. A livelock can occur when e.g. processes are too busy responding to each other to resume work. 
 
 Livelock is a rarer condition than deadlock, and can be harder to detect as the processes are not blocked when livelocked. 
 
