@@ -15,11 +15,34 @@ It is argued in this thesis Communicating Sequential Processes (CSP) is a great 
 
 This thesis details the development of \Proxc{} -- a CSP\hyp{}influenced concurrency library for modern \Cpp{}, which is built around dynamic multithreading. Dynamic multithreading is implemented as a collection of lightweight processes cooperatively scheduled on multiple schedulers. The runtime system follows the hybrid threading model, where processes are implemented as user\hyp{}threads, and each runtime scheduler runs on its own kernel\hyp{}thread. Runtime schedulers employ randomized work stealing for load balancing ready processes to idle schedulers.
 
-A detailed design and implementation of \Proxc{} is presented, with focus on dynamic multithreading. New and existing algorithms are described, mostly for how process management and inter\hyp{}process communication and synchronization is administered by the runtime schedulers. A series of benchmarks with various degrees of parallelism is performed. \Proxc{} yields promising performance results, however some issues with the work stealing algorithm are highlighted and discussed.
+A detailed design and implementation of \Proxc{} is presented, with focus on dynamic multithreading. New and existing algorithms are described, mostly for how process management, inter\hyp{}process communication and synchronization is administered by the runtime schedulers. A series of benchmarks with various degrees of parallelism is performed. \Proxc{} yields promising performance results, however some issues with the work stealing algorithm are highlighted and discussed.
 
 \Proxc{} is concluded as a successful project, providing expressive and correct abstractions for creating concurrent programs and is able to exploit the parallelism in multi\hyp{}core architectures. Some potential candidates for future work is outlined, including implementing support for networking.
 
-The \Proxc{} library is publicly released as an open\hyp{}source project with an MIT license, available and free of charge on GitHub.
+The \Proxc{} library is publicly released as an open\hyp{}source project with an MIT license, available free of charge on GitHub.
+
+\vfill
+
+\afterpage{\blankpage}
+
+\newpage
+\phantomsection
+\section*{Sammendrag}
+\addcontentsline{toc}{section}{Sammendrag}
+
+
+Helt siden konsumerprosessorer gikk ifra enkjernet til flerkjernet prosessorarkitekturer kunne ikke lenger programvare være avhengig av økning i ytelse øke med den sekvensielle ytelse for prosessorer. Høy ytelses programvare på flerkjernet arkitekturer krever nå å utnytte den åpenbare parallelismen. Samtidig programmering er hovedverktøyet for å utvikle slike programvarer, men programmerere sliter med å skrive korrekt og skalerbart samtidighets-systemer.
+
+Denne avhandlingen argumenterer at Communicating Sequential Processes (CSP) er en bra model for å lage korrekte samtidighets-systemer som har kraftig uttrykkskraft. Videre så argumenteres det at ved å kombinere den parallele naturen i CSP med et dynamisk multitrådet kjøresystem kan lage et solid fundament for høy ytelses og skalerbare programvare for flerkjernet arkitekturer.
+
+I denne avhandlingen presenteres arbeidet som er gjort på \Proxc{} -- en CSP-insperert samtidighetsbibliotek for moderne \Cpp{}, som bygges på dynamisk multitråding. Dynamisk multitråding implementeres med lettvektsprosesser som bruker sammarbeidende kjøring planlagt av flere planleggere. Kjøresystemet følger en hybrid trådmodel, hvor prosesser er implementert som brukertråder, og hver planlegger kjører på sin egen kjernetråd. Planleggerne bruker randomisert arbeidstjeling for å balansere arbeid mellom ledige planleggere.
+
+Et detaljert design og implementasjon av \Proxc{} er presentert, hvor fokuset er på dynamisk multitråding. Nye og eksisterende algoritmer er forklart, hovedsaklig på hvordan prosesstyring, inter-prosesskommunikasjon og synkronisering er forvaltet av planleggerne. En rekke tester med varierende grad av parallelisme er utført. \Proxc{} gir lovende resulterer, men en del problemer med arbeidsstjelings-algoritmen er fremhevet og diskutert.
+
+\Proxc{} er konkludert med å være et vellykket prosjekt, basert på dens uttrykskraft og korrekte abstraksjoner for å lage samtidighets-systemer og at den klarer å utnytte parallelismen i flerkjernet arkitekturer.
+
+Biblioteket \Proxc{} er publisert some åpen kildekode med MIT lisens, og er tilgjengelig gratis på GitHub.
+
 
 \vfill
 
