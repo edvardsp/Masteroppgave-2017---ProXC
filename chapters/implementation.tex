@@ -43,18 +43,18 @@ Concurrent queues often differentiate between single or multiple producers and c
 
 A SPMC queue is used as a double\hyp{}ended queue for work\hyp{}stealing, implemented with the Chase\hyp{}Lev algorithm \citep{chase2005dynamic} combined with efficient work\hyp{}stealing for weak memory models \citep{le2013correct}.
 
-An MPSC queue is used by schedulers to signal other schedulers a work process is to be rescheduled on the corresponding scheduler, implemented with the algorithm presented by \citet{vyukov2014intrusive}. 
+An MPSC queue is used by schedulers to signal other schedulers a work process is to be rescheduled on the corresponding scheduler, implemented with the design presented by \citet{vyukov2014intrusive}. 
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Mutual Exclusion Locks}
 
 
-Creating a complete non\hyp{}blocking system is usually impossible for a multiprogrammed system. Sometimes resorting to mutual exclusion in critical regions is unavoidable. Different types of locks are suitable for different situations. Whether the lock is often contested, meaning multiple kernel\hyp{}threads are trying to acquire the lock simultaneously, and if the lock is short\hyp{}term held or not, will affect the performance. 
+Creating a complete non\hyp{}blocking system is usually impossible for a multiprogrammed system, and sometimes resorting to mutual exclusion in critical regions are unavoidable. Different types of locks are suitable for different situations. Whether the lock is often contested, meaning multiple kernel\hyp{}threads are trying to acquire the lock simultaneously, and if the lock is short\hyp{}term held or not, will affect the performance. 
 
-\Citet[page 196--199]{brown2007c++csp2} performs a case study on different mutexes, describing various mutex algorithms and provides a benchmark and analysis of their performance. The conclusion from the case study is that for low contested, short\hyp{}term held mutexes, spinlocks yields best performance regarding low latency. 
+\Citet[pp. 196--199]{brown2007c++csp2} performs a case study on different mutexes, describing various mutex algorithms and provides a benchmark and analysis of their performance. The conclusion from the case study is that for low contested and short\hyp{}term held mutexes, spinlocks yields best performance regarding low latency. 
 
-For multiprocessor architectures, the \textit{test\hyp{}and\hyp{}test\hyp{}and\hyp{}set} (TTAS) spinlock is generally favorable as it causes less memory contention than the standard spinlock. Instead of constantly trying to test\hyp{}and\hyp{}set the lock, it waits until the lock appears free. Different variants of the TTAS spinlock includes constant/exponential backoff during contention and cache friendly atomic operations.
+For multi\hyp{}core architectures, the \textit{test\hyp{}and\hyp{}test\hyp{}and\hyp{}set} (TTAS) spinlock is generally favorable as it causes less memory contention than the standard spinlock. Instead of constantly trying to test\hyp{}and\hyp{}set the lock, it waits until the lock appears free. Different variants of the TTAS spinlock includes constant/exponential backoff during contention and cache friendly atomic operations.
 
 For most inter\hyp{}process runtime procedures, a TTAS spinlock with exponential backoff during contention is used. For idle schedulers waiting, the standard \lstinline[style={CustomC++}]|std::mutex| lock is used.
 
@@ -78,13 +78,13 @@ The runtime differentiates between three types of contexts, and if a context typ
 
 The initialization procedure of the runtime system is invoked with the first call to the scheduler. Given there are $N$ online logical processor cores, the procedure spawns $N-1$ additional kernel\hyp{}threads, as the initial main kernel\hyp{}thread is included. A scheduler is initialized for each kernel\hyp{}thread, representing the runtime environment for the corresponding thread. Schedulers are accessed via thread local static methods, which point to the scheduler object.
 
-The context of the \texttt{main()} function of a program, also called the initial main context, is special. It is the only context which represents some productive work of the running program, but cannot migrate between schedulers. All other main contexts (from the other spawned kernel\hyp{}threads) only joins the scheduler context, and operates invisibly to the programmer. The initial main context cannot migrate because it is calling the runtime constructors. When the main context returns, the destructors are called for the corresponding runtime objects, such as the scheduler. If the initial main context where to migrate and return on a kernel\hyp{}thread other than its origin, the runtime cleanup would result in erroneous behaviour.
+The context of the \texttt{main()} function of a program, also called the initial main context, is special. It is the only context which represents some productive work of the running program, but cannot migrate between schedulers. All other main contexts (from the other spawned kernel\hyp{}threads) only joins the scheduler context, and operates invisibly to the programmer. Main contexts cannot migrate because they are calling the runtime constructors. When the main context returns, the destructors are called for the corresponding runtime objects, such as the scheduler. If the main context where to migrate and return on a kernel\hyp{}thread other than its origin, the runtime cleanup would result in erroneous behaviour.
 
 When the initial main context returns, the cleanup procedure of the runtime system is invoked if and only if the initialization procedure has been invoked previously.
 
 Only the scheduler for which the initial main context resides on will begin as running. All other initialized schedulers will begin as idle.
 
-\Cref{fig:runtime_overview} displays a rough outline of how the contexts, user\hyp{}threads and kernel\hyp{}threads are organized relative to each other. Note that the number of work contexts on each scheduler are zero\hyp{}or\hyp{}more, but the accumulative sum of all work contexts on all schedulers equals $M$.
+\Cref{fig:runtime_overview} displays a rough outline of how the contexts, user\hyp{}threads and kernel\hyp{}threads are organized relative to each other. Note that the number of work contexts on each kernel\hyp{}thread are zero\hyp{}or\hyp{}more, but the accumulative sum of all work contexts on all kernel\hyp{}threads equals $M$.
 
 \begin{figure}[h!]
     \centering
@@ -114,13 +114,13 @@ public:
 \end{lstlisting}
 \end{lstfloat}
 
-The context objects represent the execution state of the computation. Each context object contains an execution context, which is the actual execution state of the computation. The execution context is implemented by the Boost Context library, which encapsulates context switching and manages the associated contexts stack. Note that a context object refers to the context type defined by the runtime system, and execution context refers to the Boost Context object which defines the actual processor state.
+The context object represents the execution state of the computation. Each context object contains an execution context, which is the actual execution state of the computation. The execution context is implemented by the Boost.Context library \citep{kowalke2017boost}, which encapsulates context switching and manages the associated context' stack. Note that a context object refers to the context type defined by the runtime system, and execution context refers to the Boost.Context object which defines the actual processor state.
 
 The context object does not implement much functionality, other than wrapping the execution context state with additional control structure data and intrusive data members. The functionality is implemented in the scheduler, which is explained in further detail in \cref{subsec:scheduler_implementation}.
 
 Execution contexts can either create a context of the current running execution context, or takes a function pointer of the type \lstinline[style={CustomC++}]|void(void*)|. Transfer of control flow between execution contexts is done by calling another execution context with the overloaded \lstinline[style={CustomC++}]|void* operator()(void*)| method. Parameter passing is possible through void pointer casting. When transferring control to another execution context, an optional pointer can be passed. If this is the first transfer of control to the execution context, the parameter will be passed as the void pointer argument for the function. Else, the void pointer will be passed as the return value of the transfer of control operator.
 
-\Cref{lst:transfer_control_execution_contexts} gives an example of how execution contexts work. An execution context of the currently running context is made, as well as an execution context of a lambda function. The output of the code snippet will print \texttt{main} and \texttt{work} in that order. Refer to the Boost Context documentation for a more thorough explanation of the execution context implementation \citep{kowalke2017boost}.
+\Cref{lst:transfer_control_execution_contexts} gives an example of how execution contexts work. An execution context of the currently running context is made, as well as an execution context of a lambda function. The output of the code snippet will print \texttt{main} and \texttt{work} in that order. Refer to the Boost.Context documentation for a more thorough explanation of the execution context implementation and API \citep{kowalke2017boost}.
 
 \begin{lstfloat}
 \begin{lstlisting}[caption={Transfer of control between execution contexts.}, label={lst:transfer_control_execution_contexts}, style={CustomC++}, xleftmargin={2em}]
@@ -142,9 +142,12 @@ std::cout << *msg << std::endl; // prints `work`
 \end{lstlisting}
 \end{lstfloat}
 
-When creating a context object, an enclosing entry function of the type \lstinline[style={CustomC++}]|void(void*)| is created, which calls the received function with its arguments. This entry function, called trampoline, handles the void pointer argument from the execution context, calls the process function, and calls the terminate procedure when the process function returns. This way, all terminating processes can be gracefully resolved by the trampoline invisible to the programmer. Entry functions are created with generic lambdas, allowing to create generic entry function calling over any type of function pointer and arguments. This is explained in further detail in \cref{subsec:scheduler_implementation}.
+When creating a context object, an enclosing entry function of the type \lstinline[style={CustomC++}]|void(void*)| is created, which calls the received function with its arguments. This entry function, called trampoline, handles the void pointer argument from the execution context, calls the process function, and calls the terminate procedure when the process function returns. This way, all terminating processes can be gracefully resolved by the trampoline function while remaining invisible to the programmer. Entry functions are created with generic lambdas, allowing to create generic entry function calling over any type of function pointer and arguments. This is explained in further detail in \cref{subsec:scheduler_implementation}.
 
-The context object contains the type of the context, the execution context, the entry function for the particular process, and a pointer to the parent scheduler. Each process also has its own spinlock, used when synchronizing on certain inter\hyp{}process synchronization. Additionally, control data used by the scheduler is stored in the context object, such as intrusive hooks and time points for timed suspension. See \cref{lst:context_type} for a stripped down version of the context class definition.
+The context object contains the type of the context, the execution context, the entry function for the particular process, and a pointer to the parent scheduler. Each process also has its own spinlock, used for inter\hyp{}process synchronization. Additionally, control data used by the scheduler is stored in the context object, such as intrusive hooks and time points for timed suspension. See \cref{lst:context_type} for a stripped down version of the context class definition.
+
+
+Each context object also contains a wait queue, containing other contexts which are waiting for the termination of the given context object. This queue, together with the context object spinlock, is used to implement process joining.
 
 \begin{lstfloat}
 \begin{lstlisting}[caption={Minimal context type.}, label={lst:context_type}, style={CustomC++}, xleftmargin={2em}]
@@ -154,19 +157,17 @@ private:
     using EntryFn = delegate<void(void*)>;
     using TimePointT = std::chrono::steady_clock::time_point;
     ExCtxT ex_ctx_;
-    EntryFn entry_fn_{ nullptr };
-    proxc::Scheduler * scheduler_ptr_{ nullptr };
+    EntryFn entry_fn_{nullptr};
+    proxc::Scheduler * scheduler_ptr_{nullptr};
 public:
-    TimePointT time_point_{ TimePointT::max() };
-    proxc::Alt * alt_{ nullptr };
+    TimePointT time_point_{TimePointT::max()};
+    proxc::Alt * alt_{nullptr};
     proxc::Spinlock splk_;
     /* impl defined */ wait_queue_{};
     /* intrusive data members */
 };
 \end{lstlisting}
 \end{lstfloat}
-
-FIXME wait queue.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -209,14 +210,14 @@ The scheduler has two static methods: \lstinline[style={CustomC++}]|self()| and 
 
 The \lstinline[style={CustomC++}]|self()| method is the starting point of the runtime system, for which the first call to will trigger the initialization procedure. The method contains a static thread local variable of the scheduler initializer object, which is a Schwarz counter. A Schwarz counter, also known as a nifty counter, is a \Cpp{} idiom for ensuring a non\hyp{}local static object is initialized before its first use and destroyed only after last use of the object, where the non\hyp{}local static object in this case is the scheduler object. 
 
-The first call to the scheduler initializer constructor on each kernel\hyp{}thread will initialize the scheduler object for the corresponding kernel\hyp{}thread, and simultaneously set its static thread local pointer member to the scheduler object. This static thread local pointer is the pointer which is returned by \lstinline[style={CustomC++}]|self()| method. Additionally, the \lstinline[style={CustomC++}]|running()| method returns the \lstinline[style={CustomC++}]|running_ptr_| member from the returned scheduler object, which is retrieved by the \lstinline[style={CustomC++}]|self()| method.
+The first call to the scheduler initializer constructor on each kernel\hyp{}thread will initialize the scheduler object for the corresponding thread, and simultaneously set its static thread local pointer member to the scheduler object. This static thread local pointer is the pointer which is returned by \lstinline[style={CustomC++}]|self()| method. Additionally, the \lstinline[style={CustomC++}]|running()| method returns the \lstinline[style={CustomC++}]|running_ptr_| member from the returned scheduler object, which is retrieved by the \lstinline[style={CustomC++}]|self()| method.
 
 \begin{lstfloat}
 \begin{lstlisting}[caption={Static scheduler methods.}, label={lst:static_scheduler_methods}, style={CustomC++}, xleftmargin={2em}]
 // Schwarz counter
 struct Scheduler::Initializer {
-    thread_local static Scheduler* self_{ nullptr };
-    thread_local static std::size_t counter_{ 0 };
+    thread_local static Scheduler* self_{nullptr};
+    thread_local static std::size_t counter_{0};
     Initializer() {
         if (counter_++ == 0) { 
             /* initialize scheduler */ 
@@ -246,9 +247,9 @@ From \cref{lst:scheduler_type} a total of five queues are used by the scheduler 
 
 The ready queue is called a scheduling policy, or just policy for short. The scheduling policy is an abstraction for the scheduler, for which ready processes are enqueued to and ready processes to resume are dequeued from. The scheduling policy is responsible for storing the ready processes, and how and in which order the processes are enqueued and dequeued is up to the implementation of the scheduling policy. As of writing this thesis, the default policy is hard coded with the work stealing policy. However, any type of scheduling policy could be implemented, such as round robin. Following the algorithm described in \cref{subsec:work_stealing_algorithm}, the queue is implemented as a combination of a double\hyp{}ended queue, deque for short, and a doubly linked list. The deque is used for dynamic processes and the doubly linked list is used for static processes. This is to avoid static processes from being stolen by other schedulers. The deque has two distinct ends called \textit{top} and \textit{bottom}. Enqueueing and dequeueing a dynamic process to the dequeue pushes and pops the process from the bottom end, respectively. The doubly linked list acts as a FIFO queue. The work stealing commences when both the deque and the doubly linked list are empty. A deque from another scheduler is chosen at random, and a process is tried to be stolen from the top end. Pointers to all deques from all schedulers are stored in a static list. Note that work stealing is happening unbeknownst to the scheduler, as the scheduler only enqueues and dequeues processes to the scheduler policy. 
 
-The work queue, which holds all processes the scheduler is the parent of, is implemented as an intrusive doubly linked list. The sleep queue, which holds all processes suspended until a time point, is implemented as an intrusive multiset\footnote{A multiset is an associative container that contains a set of objects, which allows multiple keys with the same values.}. The terminated queue, which holds all process which has terminated and can be destroyed, is implemented as an intrusive doubly linked list. Both work, sleep and terminated queues are only manipulated by a single scheduler and are therefore not thread\hyp{}safe, i.e. no other schedulers can access these queues safely.
+The work queue, which holds all processes the scheduler is the parent of, is implemented as an intrusive doubly linked list. The sleep queue, which holds all processes suspended until a time point, is implemented as an intrusive multiset\footnote{A multiset is an associative container that contains a set of objects, which allows multiple keys with the same values.}. The terminated queue, which holds all process which has terminated and can be destroyed, is implemented as an intrusive doubly linked list. Both work, sleep and terminated queues are only manipulated by a single scheduler and are therefore not thread safe, i.e. no other schedulers can access these queues safely.
 
-The remote queue is a concurrent MPSC queue, where the managing scheduler is the consumer while any other schedulers are the producers. Whenever a scheduler reschedules a process and it is now the parent scheduler, the context is placed in the remote queue to the parent scheduler. The parent scheduler transitions processes in the remote queue and enqueues them in the scheduling policy. In essence, the remote queue is used to signal schedulers when their processes are to be rescheduled, since remote schedulers cannot safely access the scheduling policy.
+The remote queue is a concurrent MPSC queue, where the managing scheduler is the consumer while any other schedulers are the producers. Whenever a scheduler reschedules a process and is not the parent scheduler, the context is placed in the remote queue to the parent scheduler. The parent scheduler transitions processes in the remote queue and enqueues them in the scheduling policy. In essence, the remote queue is used to signal schedulers when their processes are to be rescheduled, since remote schedulers cannot safely enqueue processes to the scheduling policy.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -261,9 +262,9 @@ The scheduler imposes a set of states for a process and how a process transition
     \item \textbf{Ready} -- a newly created process always starts in the ready state. A ready process is enqueued to a ready queue and is ready to be resumed by the parent scheduler.
     \item \textbf{Running} -- a process is currently executing on a kernel\hyp{}thread.
     \item \textbf{Ended} -- a process has terminated and is enlisted in the terminated queue. An ended process can be destroyed by the parent scheduler.
-    \item \textbf{Suspend} -- a process is waiting indefinitely. An another process might reschedule the suspended process.
-    \item \textbf{Sleep} -- a process is waiting until a given time point. A sleeping process is enlisted in the sleep queue and is rescheduled by the parent scheduler when the time point has expired or is rescheduled by an another process.
-    \item \textbf{Join} -- a process is waiting for an another process to terminate. The joining process is enlisted in the wait queue of the process to terminate, and will be rescheduled when the process terminates.
+    \item \textbf{Suspend} -- a process is waiting indefinitely. Another process might reschedule the suspended process.
+    \item \textbf{Sleep} -- a process is waiting until a given time point. A sleeping process is enlisted in the sleep queue and is rescheduled by the parent scheduler when the time point has expired or is rescheduled by another process.
+    \item \textbf{Join} -- a process is waiting for another process to terminate. The joining process is enlisted in the wait queue of the process, and will be rescheduled when the process terminates.
     \item \textbf{Remote} -- a process is rescheduled by an another process which does not have the same parent scheduler. A remote ready process is enlisted in the remote queue.
 \end{itemize}
 
@@ -301,7 +302,7 @@ Inter\hyp{}process synchronization, also called joining, allows for processes to
 
 When a process is joining on another process, the lock is first acquired, and the termination flag is checked. If the termination flag is not set, the process enlists itself on the wait queue of the joining process, and the process suspends itself with releasing the lock. If the termination flag is set, the operation returns immediately. Note that it is safe for processes to access the wait queue as its guarded with mutual exclusion.
 
-Context switch operations allow for processes to perform an action after the context switch has occurred. This is necessary when a process can only perform said action after itself has yielded execution. Currently, two operations requires a context switch operation: releasing a lock and rescheduling a process. Releasing a lock after a context switch is necessary when a process releasing a lock could result in the given process being rescheduled by an another process. An example of this is inter\hyp{}process synchronization. Rescheduling a process after a context switch is necessary when a process want to reschedule itself, such as processor yielding.
+Context switch operations allow for processes to perform an action after the context switch has occurred. This is necessary when a process can only perform said action after itself has yielded execution. Currently, two operations can be performed with a context switch operation: releasing a lock and rescheduling a process. Releasing a lock after a context switch is necessary when a process releasing a lock could result in the given process being rescheduled by an another process. An example of this is inter\hyp{}process synchronization. Rescheduling a process after a context switch is necessary when a process want to reschedule itself, such as processor yielding.
 
 
 \FloatBarrier
@@ -388,11 +389,10 @@ Note that if the process is rescheduled by some other process which does not sha
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Parallel Statement}
 
-FIXME explain what it is and point to design.
 
-The parallel statement has two obvious phases: the \textit{fork} and \textit{join phase}. 
+The parallel statement, following the design presented in \cref{subsec:fork_join_parallelism}, has two obvious phases: the \textit{fork} and \textit{join phase}. 
 
-During the fork phase, each process to be executed in parallel is spawned by the parent process, one by one. The parent process is in this context the process calling the parallel statement. Spawning involves creating the process, attaching the process to the current scheduler, and launching the process. Launching the process simply enqueues the process to the ready queue of the current scheduler. When all parallel process has been spawned, the parent process enters the join phase.
+During the fork phase, each process to be executed in parallel is spawned by the parent process, one by one. The parent process is in this context the process calling the parallel statement. Spawning involves creating the process, attaching the process to the current scheduler, and schedules the process. When all parallel process has been spawned, the parent process enters the join phase.
 
 The join phase consists of the parent process joining all parallel processes, one by one. Joining a process involves waiting until the process has terminated. One of two things happens when joining: either the process has not terminated and is still executing, or it has terminated. If the process has terminated, the parent process continues the join phase. If not, the parent process waits. When the process terminates, it will wake up the parent process.
 
@@ -436,7 +436,7 @@ struct Chan : public std::tuple<Tx<T>,Rx<T>> {
 \end{lstlisting}
 \end{lstfloat}
 
-Two channel containers are also supplied: \lstinline[style={CustomC++}]|ChanArr<T,N>| for static allocation on the stack, and \lstinline[style={CustomC++}]|ChanVec<T>| for dynamic allocation on the heap. The underlying container of \lstinline[style={CustomC++}]|ChanArr<T,N>| is a \lstinline[style={CustomC++}]|std::array<T,N>|, and the underlying cotnainer of \lstinline[style={CustomC++}]|ChanVec<T>| is a \lstinline[style={CustomC++}]|std::vector<T>|. All related methods and types associated with the underlying container is accessible with the corresponding channel container. This means channel containers support indexing with brackets, e.g. \lstinline[style={CustomC++}]|[i]|. See \cref{lst:channel_container_types} for channel container type definitions.
+Two channel containers are also supplied: \lstinline[style={CustomC++}]|ChanArr<T,N>| for static allocation on the stack, and \lstinline[style={CustomC++}]|ChanVec<T>| for dynamic allocation on the heap. The underlying container of \lstinline[style={CustomC++}]|ChanArr<T,N>| is a \lstinline[style={CustomC++}]|std::array|, and the underlying container of \lstinline[style={CustomC++}]|ChanVec<T>| is a \lstinline[style={CustomC++}]|std::vector|. All related methods and types associated with the underlying container is accessible with the corresponding channel container. This means channel containers support indexing with brackets, e.g. \lstinline[style={CustomC++}]|[i]|. See \cref{lst:channel_container_types} for channel container type definitions.
 
 \begin{lstfloat}
 \begin{lstlisting}[caption={Channel container types.}, label={lst:channel_container_types}, style={CustomC++}, xleftmargin={2em}]
@@ -463,9 +463,9 @@ Channels can be closed. When a channel is closed, no more channel operations can
 
 Channel ends are movable but non\hyp{}copyable, meaning channel ends must explicitly pass ownership between scopes. As each process in itself is an independent running scope, channel ends being non\hyp{}copyable ensures only one process holds and owns a channel end at any given time. If a process were to pass a channel end to another process, the ownership of the given channel end must be moved.
 
-Channel ends are no more than class object holding a shared pointer to the underlying channel implementation. The channel implementation is of type \lstinline[style={CustomC++}]|ChannelImpl<T>|, containing the entire channel functionality. Channel ends are therefore no more than wrapping types restricting the access to the channel implementation. Whenever a channel is to be allocated, a channel implementation object is dynamically allocated with the shared pointer \lstinline[style={CustomC++}]|std::shared_ptr<T>|, and both channel ends are constructed with the shared pointer of the channel implementation.
+Channel ends are no more than class object holding a shared pointer to the underlying channel implementation. The channel implementation is of type \lstinline[style={CustomC++}]|ChannelImpl<T>|, containing the entire channel functionality. Channel ends are therefore no more than wrapping types, restricting the access to the channel implementation. Whenever a channel is to be allocated, a channel implementation object is dynamically allocated with the shared pointer \lstinline[style={CustomC++}]|std::shared_ptr|, and both channel ends are constructed with the shared pointer of the channel implementation.
 
-The channel implementation follows the algorithm presented in \cref{subsec:channel_end_algorithm}. Some important details to note is that all channel operations, such as closing, send, receive, etc. are enclosed with a spinlock that belongs to the channel implementation object. The spinlock effectively serializes all access to the channel implementation. However, some parts of the channel end algorithm require the participant to wait. The lock is therefore released after the process is suspended, using a context switch operation. If the lock were to be released before suspending, the opposite channel end could theoretically complete the channel operation and reschedule the current channel end before it suspended.
+The channel implementation follows the algorithm detailed in \cref{subsec:channel_end_algorithm}. Some important details regarding the channel implementation is that all channel operations, such as closing, send, receive, etc. are enclosed with a spinlock that belongs to the channel implementation object. The spinlock effectively serializes all access to the channel implementation. However, some parts of the channel end algorithm require the participant to wait. The lock is therefore released after the process is suspended, using a context switch operation. If the lock were to be released before suspending, the opposite channel end could theoretically complete the channel operation and reschedule the current channel end before it suspended.
 
 The alting channel end implementation is slightly more complicated than the non\hyp{}alting implementation, as it has a alt\hyp{}to\hyp{}alt synchronization procedure before trying the acquire the channel implementation lock.
 

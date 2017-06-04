@@ -12,9 +12,9 @@ Benchmarking performance of a concurrency library is not intuitive. Some might e
 
 For this benchmark, a set of concurrent programs are tested with various degrees of parallelism. Metrics such as concurrent throughput, sequential speed, and load balancing are factors which can influence performance.
 
-To have some appropriately comparable benchmarks, entries from \cref{sec:multicore_csp_existing} are included. Occam and XC are however not included, as they require proprietary hardware to run on multi\hyp{}core architectures. \Cpp{}CSP2 is also not included because of difficulties of implementing benchmark tests which did not result in spurious segmentation faults by the library during execution- Boost.Fiber is not included because a lack of the necessary CSP abstractions to create the benchmarks.
+To have some appropriately comparable benchmarks, entries from \cref{sec:multicore_csp_existing} are included. Occam and XC are however not included, as they require proprietary hardware to run on multi\hyp{}core architectures. \Cpp{}CSP2 is not included because of difficulties of implementing benchmark tests which did not result in spurious segmentation faults by the library during execution. Boost.Fiber is not included because the lack of the necessary CSP abstractions to create the benchmarks.
 
-Additionally, single\hyp{}core versions of \Proxc{} and Go are included to observe the potential speedup in performance with multi\hyp{}core. \Proxc{} implements a single\hyp{}core runtime system with a round robin scheduling policy, while Go implements single\hyp{}core runtime system by setting the number of schedulers to one with \texttt{GOMAXPROCS}. \Cpp{}CSP has no support for a single\hyp{}core runtime system, and therefore only the multi\hyp{}core version is included.
+Additionally, single\hyp{}core versions of \Proxc{} and Go are included to observe the potential speedup in performance compared to multi\hyp{}core. \Proxc{} implements a single\hyp{}core runtime system with a round robin scheduling policy, while Go implements single\hyp{}core runtime system by setting the number of schedulers to one with \texttt{GOMAXPROCS}. \Cpp{}CSP has no support for a single\hyp{}core runtime system, and therefore only the multi\hyp{}core version is included.
 
 All code for the different benchmark tests can be found in \cref{ch:benchmark_code}.
 
@@ -43,7 +43,7 @@ Three type of benchmark tests are performed: \textit{extended commstime}, \texti
 
 The extended commstime test is a custom derivation of the original commstime test. The original commstime test \citep{roger2001commstime} is a pseudo\hyp{}standard benchmark for testing sequential channel communication between processes. Three processes called \textit{prefix}, \textit{delta} and \textit{successor} creates a channel cycle, sending an integer in loops. Each loop increments the integer. A fourth process, called \textit{consumer}, receives the integer on each loop cycle. The consumer receives an integer a number of times and calculates the average time to receive the integer. The commstime test mostly gives a metric for the overhead regarding channel communication.
 
-Channel communication overhead is not that interesting of a metric with dynamic multithreading. Commstime is however a good metric for a programs adaptability of sequential programs, as all processes create an sequential dependency. I therefore propose the \textit{extended commstime} test. Instead of three processes in a channel communication cycle, $N$ processes are created in a chain of channel communications, creating a variable sized cycle.
+Channel communication overhead is not that interesting of a metric with dynamic multithreading. Commstime is however a good metric for a programs adaptability of sequential programs, as the four processes in commstime creates a sequential dependency. I therefore propose the \textit{extended commstime} test. Instead of three processes in a channel communication cycle, $N$ processes are created in a chain of channel communications, creating a variable sized cycle.
 
 The extended commstime varies the chain length from $N=1$ to $1000$. For each chain length value of $N$, the time to receive $100$ integers divided by the chain length is averaged over $50$ runs. 
 
@@ -75,18 +75,18 @@ Both approaches tests for the same; for a given dimension from $D=1$ to $1000$, 
 
 The hard coded optimal distribution is implemented by having the number of worker processes equal to the number of logical cores, $8$ in this case. Each worker process receives a line to calculate from a channel, where a producer process is on the other end continuously sending new lines to calculate. A consumer process receives finished calculated lines on a channel from the worker processes.
 
-Note that for the single\hyp{}core version, only $1$ worker process is spawned as only a single core is available.
+Note that for the single\hyp{}core versions, only $1$ worker process is spawned as only a single core is available.
 
 The results of the hard coded Mandelbrot test are presented in \cref{fig:mandelbrot_hardcoded}.
 
 \begin{figure}[h!]
     \centering
     \includegraphics[width=0.9\linewidth]{fig/mandelbrot_hardcoded}
-    \caption{Results of concurrent Mandelbrot with hard coded number of workers.}
+    \caption{Results of concurrent Mandelbrot with hard coded number of workers. Lower values are better.}
     \label{fig:mandelbrot_hardcoded}
 \end{figure}
 
-The dynamic sub-optimal distribution is implemented by having worker processes each dedicated for calculating a single line, meaning a total of $D$ worker processes will be spawned for a dimension $D$. All worker processes will be spawned simultaneously. At consumer process will receive finished calculated lines on a channel from the worker processes, just as the hard coded Mandelbrot test.
+The dynamic sub-optimal distribution is implemented by having worker processes each dedicated for calculating a single line, meaning a total of $D$ worker processes will be spawned for a dimension $D$. All worker processes will be spawned simultaneously. A consumer process will receive finished calculated lines on a channel from the worker processes, just as the hard coded Mandelbrot test.
 
 The results for the dynamic Mandelbrot test are presented in \cref{fig:mandelbrot_dynamic}.  
 
@@ -133,7 +133,7 @@ The single\hyp{}core versions of both entries were expected to yield best result
 
 The results of the hard coded Mandelbrot test in \cref{fig:mandelbrot_hardcoded} were interesting, but expected. The multi\hyp{}core and single\hyp{}core versions of both \Proxc{} and Go respectively increase in execution time with the same exponential trend. The single\hyp{}core version was expected to perform worst, while the multi\hyp{}core versions were expected to have a much better execution time. What is surprising is \Cpp{}CSP being the best entry here. When thinking about it, \Cpp{}CSP does have the most optimal setup here. Since each worker process in \Cpp{}CSP is a kernel\hyp{}thread, each thread can run independently of each other on each core. Considering \Cpp{}CSP is the best possible outcome, both multi\hyp{}core version of \Cpp{}CSP and \Proxc{} yields a decent result.
 
-The results of the dynamic Mandelbrot test in \cref{fig:mandelbrot_dynamic} however shows a different side. The same trends for the single\hyp{}core versions can be observed. \Cpp{}CSP slightly doubles in execution time, while Go almost matches the results of the hard coded Mandelbrot test for \Cpp{}CSP. The big surprise is now multi\hyp{}core \Proxc{} equals single\hyp{}core \Proxc{}. Further inspections of the running test processor utilization reveals the runtime system only fully utilizes a single processor core. What is happening is when the worker processes are spawned, everyone is placed on the same ready queue on the same parent scheduler. All other idle schedulers fail to effectively steal work of the one parent scheduler, resulting in only one scheduler having work to run. This test clearly highlights that \Proxc{} has issues with effectively distributing a huge number of small work across the idle schedulers.
+The results of the dynamic Mandelbrot test in \cref{fig:mandelbrot_dynamic} however shows a different side. The same trends for the single\hyp{}core versions can be observed. \Cpp{}CSP slightly doubles in execution time, while Go almost matches the results of the hard coded Mandelbrot test for \Cpp{}CSP. The big surprise is now multi\hyp{}core \Proxc{} equals single\hyp{}core \Proxc{}. Further inspections of the running test processor utilization reveals the runtime system only fully utilizes a single processor core. What is happening is that when the worker processes are spawned, everyone is placed on the same ready queue on the same parent scheduler. All other idle schedulers fail to effectively steal work of the one parent scheduler, resulting in only one scheduler having work to run. This test clearly highlights that \Proxc{} has issues with effectively distributing a huge number of small work across the idle schedulers.
 
 Lastly, the results of the concurrent prime sieve test in \cref{fig:concurrent_sieve} are probably the most promising results. Fully utilizing the parallel nature in the concurrent prime sieve algorithm is very unintuitive, and heavily relies on the runtime system to detect ready work and effectively distribute said work among idle schedulers. The results show that the single\hyp{}core and multi\hyp{}core versions of \Proxc{} and Go both follow the same trend, where the multi\hyp{}core versions yields a much better result than the single\hyp{}core versions. \Cpp{}CSP is a lot slower than the single\hyp{}core versions of \Proxc{} and Go, showing the lack of concurrent throughput in \Cpp{}CSP. 
 

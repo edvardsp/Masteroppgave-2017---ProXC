@@ -19,7 +19,7 @@ Programs using \Proxc{} does not need to initialize or cleanup the library. This
 \section{Processes}
 
 
-At the core of \Proxc{} are lightweight processes. These processes is a separate scope of execution which can run concurrently with the rest of the program. In code, these processes are represented by a function and its corresponding arguments. The main function of any \Cpp{} program is also implicitly a process. This function must have a return type of \lstinline[style={CustomC++}]|void|, but can have any type and number of arguments. \Cref{lst:code_example_process_func} shows different function prototypes where some qualify running as a process and some do not.
+At the core of \Proxc{} are lightweight processes. These processes are a separate scope of execution which can run concurrently with the rest of the program. In code, these processes are represented by a function and its corresponding arguments. The main function of any \Cpp{} program is also implicitly a process. This function must have a return type of \lstinline[style={CustomC++}]|void|, but can have any type and number of arguments. \Cref{lst:code_example_process_func} shows different function prototypes where some qualify running as a process and some do not.
 
 \begin{lstfloat}
 \begin{lstlisting}[caption={Different function prototypes which do and do not qualify as a process.}, label={lst:code_example_process_func}, style={CustomC++}, xleftmargin={2em}]
@@ -72,7 +72,7 @@ parallel(
 
 Process objects are non\hyp{}copyable but movable, meaning the ownership of process objects must be moved between scopes. A process object is of one\hyp{}time use. After a process has executed and terminated, the process object cannot be run again. The process object must be constructed once more to be executed again. 
 
-In any process context, a set of operations are available for the current running process, accessible in the \lstinline[style={CustomC++}]|this_proc| namespace. The operations includes getting the current process id, yielding, and suspending for a given duration or until a time point. The suspension operations supports time types from the standard library \lstinline[style={CustomC++}]|std::chrono|. See \cref{lst:per_process_operations} for reference.
+In any process context a set of operations are available for the current running process, accessible in the \lstinline[style={CustomC++}]|this_proc| namespace. The operations includes getting the current process id, yielding, and suspending for a given duration or until a time point. The suspension operations supports time types from the standard library \lstinline[style={CustomC++}]|std::chrono|. See \cref{lst:per_process_operations} for reference.
 
 \begin{lstfloat}
 \begin{lstlisting}[caption={Per process operations for the current executing process.}, label={lst:per_process_operations}, style={CustomC++}, xleftmargin={2em}]
@@ -169,7 +169,7 @@ rx();     // returns T
 
 A channel has a notion of being open or closed. A channel always starts as being open. When a channel is closed, no more channel transmission can be completed. A closed channel forever remains closed until destroyed. A channel becomes closed either by a channel end explicitly closing the channel with the class method \lstinline[style={CustomC++}]|close|, or a channel end object goes out of scope and is deallocated. A channel end can test whether the channel is closed or not with the class method \lstinline[style={CustomC++}]|is_closed|, which returns true for a closed channel and false otherwise.
 
-The channel end object \lstinline[style={CustomC++}]|Rx| supports for range\hyp{}based for loops, retrieving data as long as the channel is open. When the channel becomes closed, the for loop automatically break. See \cref{lst:range_based_for_loops_channel} for reference.
+The channel end object \lstinline[style={CustomC++}]|Rx| supports for range\hyp{}based for loops, retrieving data as long as the channel is open. When the channel becomes closed, the for loop automatically breaks. See \cref{lst:range_based_for_loops_channel} for reference.
 
 \begin{lstfloat}
 \begin{lstlisting}[caption={Range\hyp{}based for loops with the receving channel end.}, label={lst:range_based_for_loops_channel}, style={CustomC++}, xleftmargin={2em}]

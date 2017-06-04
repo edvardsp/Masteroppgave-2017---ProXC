@@ -89,7 +89,7 @@ Now, not everything is about performance. Some might argue correct and expressiv
 % using spinlocks vs other locks? hybrids?
 % locking kernel-threads to cores
 
-Creating a dynamic multithreaded CSP library for multi\hyp{}core architectures is mostly motivated by the potential performance increase in concurrent systems by utilizing the available cores. CSP is about creating a correct and expressive abstraction over concurrent systems rather than performance, but it is tempting to fully utilize multi\hyp{}core architectures because of the inherently parallel nature of CSP. Therefore, the rhetorical question is as follows: is the difficulty of implementing a dynamic multithreaded CSP library worth it?
+Creating a dynamic multithreaded CSP library for multi\hyp{}core architectures is mostly motivated by the potential performance increase in concurrent systems by utilizing the available cores. CSP is about creating a correct and expressive abstraction over concurrent systems rather than performance, but it is tempting to exploit the apparent parallelism in multi\hyp{}core architectures because of the inherently parallel nature of CSP. Therefore, the rhetorical question is as follows: is the difficulty of implementing a dynamic multithreaded CSP library worth it?
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -98,7 +98,7 @@ Creating a dynamic multithreaded CSP library for multi\hyp{}core architectures i
 
 What separates a single\hyp{}core vs. a multi\hyp{}core implementation of a user\hyp{}threaded runtime system is the ability with single\hyp{}core runtime systems to reason and control which states processes are in, when they are running, etc. This reasoning is especially important in critical regions of the runtime system, being able to justify certain states in algorithms based on process states.
 
-For a single\hyp{}core runtime system, any critical regions and side effects can be fully reasoned about. Since only one process runs at any given moment, code running between descheduling points essentially becomes a mutual exclusion. Multicore runtime systems cannot follow the same reasoning, since it has much less control whether a given process is currently running on another processor core not. Critical regions in the runtime system must most likely enforce some sort of mutual exclusion. 
+For a single\hyp{}core runtime system, any critical regions and side effects can be fully reasoned about. Since only one process runs at any given moment, code running between descheduling points essentially becomes a mutual exclusion. Multi\hyp{}core runtime systems cannot follow the same reasoning, since it has much less control whether a given process is currently running on another processor core not. Critical regions in the runtime system must most likely enforce some sort of mutual exclusion. 
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

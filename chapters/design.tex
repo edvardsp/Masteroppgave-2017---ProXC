@@ -11,7 +11,7 @@
 
 First of all, \Proxc{} is a concurrency library for \Cpp{}. Only recently as of \Cpp{}11 has the \Cpp{} programming language added concurrency primitives to the standard library, such as threading and futures. However, \Cpp{} lacks any standard support for concurrency in user space. 
 
-Designing a concurrency library for \Cpp{} with dynamic multithreading requires some notion of user space threading mechanism, which in turn requires a runtime system. This runtime system acts as an invisible layer between the program and the operating system, handling resources and logistics of scheduling the different processes running in the program. 
+Designing a concurrency library for \Cpp{} with dynamic multithreading requires some notion of threading mechanism in user space, which in turn requires a runtime system. This runtime system acts as an invisible layer between the program and the OS, handling resources and logistics of scheduling the different processes running in the program. 
 
 All library functionality, such as channels, builds upon the framework provided by the runtime system. Essentially, anything must be done via the runtime system, which is why the limitations of the runtime system functionality limit the potentiality of the library functionality.
 
@@ -22,13 +22,13 @@ This chapter contains a full design of \Proxc{}, and explains some of the design
 \section{Runtime System}
 
 
-Before discussing the design of the runtime system, lets first identify what the responsibilities of the runtime system are. A \Proxc{} program contains a set of processes, where each process represents some point of execution. The runtime system must be able to spawn, schedule, and synchronize these processes, i.e. process management. A scheduler could therefore be responsible for process management. 
+Before discussing the design of the runtime system, the responsibilities of the runtime system are first identified. A \Proxc{} program contains a set of processes, where each process represents some point of execution. The runtime system must be able to spawn, schedule, and synchronize these processes, i.e. process management. A scheduler could be responsible for process management. 
 
-For a single\hyp{}core runtime system, only a single scheduler makes sense. However, how many schedulers are optimal for a dynamic multithreaded runtime system? Given the maximum number of parallel executions on a processor is equal to the number of available processor cores, the optimal number of schedulers is the number of available processor cores, and each scheduler runs on its own processor core. If more schedulers where online than available processor cores, situations would occur were multiple schedulers are struggling to run on the same processor core, which would be unproductive.
+For a single\hyp{}core runtime system, only a single scheduler makes sense. However, how many schedulers are optimal for a dynamic multithreaded runtime system? Given the maximum number of parallel executions on a processor architecture is equal to the number of available logical processor cores, the optimal number of schedulers is the number of available logical processor cores, as each scheduler runs on its own logical processor core. If more schedulers were online than logical processor cores, situations would occur were multiple schedulers are struggling to run on the same logical processor core, which would be unproductive.
 
 Another important factor is how process management is shared among schedulers. Two principal strategies exists, namely \textit{centralized} or \textit{distributed} management. Given a centralized management, all schedulers share the same control structures, including a shared process queue for which processes are to be scheduled from. All schedulers share the responsibility for all processes in a program. Given a distributed management, all schedulers has a set of processes for which it has the responsibility of managing. Schedulers share nothing, essentially meaning all processes has a parent scheduler.
 
-A centralized management is easy to implement, as the entire runtime system such as control structures and processes  is shared between schedulers. Schedulers do not have to worry about distributing processes for scheduling, as all processes are scheduled through the same queue. However, it does not scale as well with an increase in processor cores, as it creates contention between the increase in schedulers accessing the shared control structures. Distributed management is much harder to implement, as now each scheduler has its own set of control structures and processes. The main issue is how to efficiently distribute ready processes between schedulers. If done right, distributed management scales very well with an increase in processor cores.
+A centralized management is easy to implement, as the entire runtime system such as control structures and processes are shared between schedulers. Schedulers do not have to worry about distributing processes for scheduling, as all processes are scheduled through the same queue. However, it does not scale as well with an increase in processor cores, as it creates contention between the increase in schedulers accessing the shared control structures. Distributed management is much harder to implement, as now each scheduler has its own set of control structures and processes. The main issue is how to efficiently distribute ready processes between schedulers. If done right, distributed management scales very well with an increase in logical tprocessor cores.
 
 Given that \Proxc{} aims to be a high\hyp{}performance concurrency library, distributed process management is necessary for catering to all multi\hyp{}core architectures.
 
@@ -45,7 +45,7 @@ A scheduler is either \textit{running} or \textit{idle}. A running scheduler has
 
 Ready work processes are stored in a process queue called the \textit{ready queue}. The scheduler uses the ready queue to determine whether it has ready work processes or not, i.e. an idle scheduler has an empty ready queue. When a scheduler has a non\hyp{}empty ready queue, a work process is removed from the ready queue and resumed execution. Scheduling and rescheduling a work process is equivalent to adding the process to the ready queue.
 
-As processes are scheduled in user space, the scheduler relies on \textit{cooperative scheduling}. Cooperative scheduling entails running processes voluntarily yielding running time to the scheduler. If a process never yields to the scheduler, the process will run for ever. 
+As processes are scheduled in user space, the scheduler relies on \textit{cooperative scheduling}. Cooperative scheduling entails running processes voluntarily yielding running time to the scheduler. If a process never yields to the scheduler, the process will run forever. 
 
 The main challenge of the scheduler is how to distribute superfluous ready work processes to schedulers which are idle. Two principal strategies exist: \textit{work sharing} and \textit{work stealing}. Work sharing consists of manually distributing new work processes among the schedulers. Work stealing consists of stealing ready work from other schedulers when a scheduler runs out of ready work, i.e. becoming idle. 
 
@@ -69,7 +69,8 @@ Work processes may also suspend, or sleep, until a given or derived time point. 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Feature Design}
 
-FIXME?
+
+The feature set of \Proxc{} is what the programmer uses to create his or hers concurrent systems. The design of the feature set is important to provide the necessary abstractions for the programmer, which is presented in this section.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -87,13 +88,13 @@ Date timer is used for absolute timeout. It is a one\hyp{}shot timer, and will a
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Fork\hyp{}Join Parallelism}
+\subsection{Parallel Statement}
 \label{subsec:fork_join_parallelism}
 
 
-Processes can spawn new processes in parallel with the \textit{parallel} statement. The parallel statement takes one or more processes, either as single process statements or process replicators, and spawns and runs these processes in parallel. The spawned processes run concurrently with any other processes currently running in the program. The parallel statement is the only way to spawn new processes with \Proxc{}.
+Processes can spawn new processes in parallel with the \textit{parallel statement}. The parallel statement takes one or more processes, either as single process statements or process replicators, and spawns and runs these processes in parallel. The spawned processes run concurrently with any other processes currently running in the program. The parallel statement is the only way to spawn new processes with \Proxc{}.
 
-The parallel statement follows the fork\hyp{}join model \citep[page 88]{mccool2012structured}, where a sequential execution branches off at a designated point into parallel work, and subsequently joins/merges at another designated point and resumes the original sequential execution. \Cref{fig:fork_join_model} gives a simple illustration of the fork\hyp{}join model.
+The parallel statement follows the fork\hyp{}join model \citep[pp. 88]{mccool2012structured}, where a sequential execution branches off at a designated point into parallel work, and subsequently joins/merges at another designated point and resumes the original sequential execution. \Cref{fig:fork_join_model} gives a simple illustration of the fork\hyp{}join model.
 
 \begin{figure}[h!]
     \centering
@@ -104,7 +105,7 @@ The parallel statement follows the fork\hyp{}join model \citep[page 88]{mccool20
 
 The process calling the parallel statement is the parent process. When calling the parallel statement, the parent process is suspended until all processes within the parallel statement have spawned, executed and terminated. When all parallel processes have terminated, the parent process resumes execution. 
 
-The processes to be executed in parallel can be defined in two ways: either as a single process or as a replicated process. See \cref{subsec:processes} for a more detailed explanation of processes. 
+Processes to be executed in parallel can be defined in two ways: either as a single process or as a replicated process. See \cref{subsec:processes} for a more detailed explanation of processes. 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Channels}
@@ -130,13 +131,13 @@ Synchronous channels are usually preferred over asynchronous channels, as it is 
 
 A unidirectional channel only allows messages to be transmitted in one direction. In contrast, a bidirectional channel allows messages to be transmitted in both directions. Unidirectional channels are more restrictive than bidirectional channels. The argument for unidirectional channels is a follows: given a bidirectional channel, it is possible for both participants to disagree which direction a channel transmission is for a given moment, i.e. both are participant are trying to send or receive, causing a deadlock. The direction of a channel transmission for a unidirectional channel is always given, and can bever cause any deadlocks.
 
-Some channel design has the concept of limiting how many unique processes can access and use a channel. This concept is called \textit{disjointness rules} in XC \citep{douglas2009programming} and \textit{usage rules} in occam \citep{barrett1992occam}. In essence, these ``rules'' specify if either end of a channel, sending and receiving, can only be used by a unique process or any processes. Usually denoted by \textit{one/any\hyp{}to\hyp{}one/any}, this gives the four configurations: \textit{one\hyp{}to\hyp{}one}, \textit{one\hyp{}to\hyp{}any}, \textit{any\hyp{}to\hyp{}one}, and \textit{any\hyp{}to\hyp{}any}. Both XC and occam follows the one\hyp{}to\hyp{}one design.
+Some channel design has the concept of limiting how many unique processes can access and use a channel. This concept is called \textit{disjointness rules} in XC \citep[pp. 32]{douglas2009programming} and \textit{usage rules} in occam \citep[pp. 116]{barrett1992occam}. In essence, these ``rules'' specify if either end of a channel, sending and receiving, can only be used by a unique process or any processes. Usually denoted by \textit{one/any(senders)\hyp{}to\hyp{}one/any(receivers)}, which gives the four configurations: \textit{one\hyp{}to\hyp{}one}, \textit{one\hyp{}to\hyp{}any}, \textit{any\hyp{}to\hyp{}one}, and \textit{any\hyp{}to\hyp{}any}. Both XC and occam follows the one\hyp{}to\hyp{}one design.
 
-Ensuring both Tx and Rx agrees on the type of message being transmitted has to do with \textit{type safety}. If both participants of a channel operations disagrees in the type of the transmitted message, a \textit{type error} occurs. Type safety is therefore to discourage or prevent type errors. It is obviously desirable for a type safe channel, but it is highly dependent on support from either the programming language or the compiler to enforce type safety. A compromise is size safe channels, where both participants agree on the size of the message rather than the type. Size safety is not as desirable as type safety, but is much more doable to enforce.
+Ensuring both Tx and Rx agrees on the type of message being transmitted has to do with \textit{type safety}. If both participants of a channel operations disagrees in the type of the transmitted message, a \textit{type error} occurs. Type safety is therefore to discourage or prevent type errors. It is obviously desirable for a type safe channel, but it is highly dependent on support from the programming language and/or the compiler to enforce type safety. A compromise is size safe channels, where both participants agree on the size of the message rather than the type. Size safety is not as desirable as type safety, but is much more doable to enforce.
 
-Channels have a notion of being open or closed. An open channel operates as normal, but a closed channel will deny any operations being completed. A channel always starts as open, and can be closed in on of two ways: an explicit close from either participant, or either channel end goes out of scope, i.e. is no longer available. When a channel becomes closed it remains closed. A closed channel is used to signal participants when no more values will be sent on the channel, which is useful to communicate completion to the opposite channel end.
+Channels have a notion of being open or closed. An open channel operates as normal, but a closed channel will deny any operations being completed. A channel always starts as open, and can be closed in one of two ways: an explicit close from either participant, or either channel end goes out of scope, i.e. is no longer available. When a channel becomes closed it remains closed. A closed channel is used to signal participants when no more values will be sent on the channel, which is useful to communicate completion to the opposite channel end.
 
-Considering the different channel factors above, channels in \Proxc{} are synchronous and unbuffered, unidirectional, one\hyp{}to\hyp{}one and type safe.
+Considering the different channel confifugrations above, channels in \Proxc{} are synchronous and unbuffered, unidirectional, one\hyp{}to\hyp{}one and type safe.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -146,14 +147,14 @@ Considering the different channel factors above, channels in \Proxc{} are synchr
 
 Alting is a construct allowing to wait on multiple alternatives simultaneously, selecting an alternative when one or more alternatives are ready. Each alternative has an optional corresponding block of code (closure) which is executed if chosen. Alternatives can also be guarded by a boolean value, enabling or disabling certain alternatives on certain conditions. These boolean guards are evaluated at the initialization of the alting procedure.
 
-Three types of alternatives exists: channel operations, timers, and skip. Channel operation alternatives include both sending and receiving.
+Three types of alternatives exists: channel operations, timers, and skip. Channel alternatives include both sending and receiving.
 
-The alting procedure works as follows: at initialization, zero or more alternatives are enabled for selection. Each enabled alternative is checked if ready to synchronize. If one or more alternatives are ready, one is selected. If none are ready, the alting procedure suspends and waits for the first alternative to become ready. This first ready alternative is automatically selected. When the alting procedure has selected an alternative, the corresponding closure is executed if present.
+The alting procedure works as follows: at initialization, zero\hyp{}or\hyp{}more alternatives are enabled for selection. Each enabled alternative is checked if ready to synchronize. If one or more alternatives are ready, one is selected. If none are ready, the alting procedure suspends and waits for the first alternative to become ready. This first ready alternative is automatically selected. When the alting procedure has selected an alternative, the corresponding closure is executed if present.
 
 The alternatives operates, when enabled, as follows:
 
 \begin{enumerate}[topsep=0em,itemsep=-1em,partopsep=0.5em,parsep=1em]
-    \item \textbf{Channel operation} -- specifies a channel send or receive. A channel send is accompanied with the item to transmit, while a channel receive can optionally capture the received item in the alternative closure. The alternative becomes ready when the opposite side of the channel operation is present.
+    \item \textbf{Channel operation} -- specifies a channel send or receive. A channel send is accompanied with the item to transmit, while a channel receive can optionally capture the received item in the alternative closure. The alternative becomes ready when the opposite participant of the channel is present.
     \item \textbf{Timeout} -- is a timer with a corresponding timeout. If the alting process has not selected an alternative before timeout, the timer alternative is selected.
     \item \textbf{Skip} -- is an alternative which is always ready. It can be compared to the \texttt{default} case in switch cases. If no alternatives are ready at the alting initialization, the skip alternative is selected. 
 \end{enumerate}
@@ -167,7 +168,9 @@ An channel alternative can either be selected \textit{actively} or \textit{passi
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Runtime Algorithms}
 
-FIXME?
+
+A selection of new and existing algorithms are used for the different runtime and library features, which are presented in more detail in this section.
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Work Stealing Algorithm}
@@ -176,7 +179,7 @@ FIXME?
 
 As each scheduler has their unique set of work processes, work stealing is employed to distribute superfluous work processes from a running scheduler to an idle scheduler. 
 
-The work stealing algorithm centers around the ready queue. As long as ready queue contains ready processes, the scheduler will continue to resume work processes from the queue. However, when the ready queue becomes empty, the scheduler resort to work stealing. Work stealing goes as follows:
+The work stealing algorithm centers around the ready queue. As long as ready queue contains ready processes, the scheduler will continue to resume work processes from the queue. However, when the ready queue becomes empty, the scheduler resorts to work stealing. Randomized work stealing as described in \citet{blumofe1999scheduling} goes as follows:
 
 \begin{enumeratefloat}
 \begin{enumerate}[topsep=0em,itemsep=-1em,partopsep=0.5em,parsep=1em]
@@ -235,7 +238,7 @@ The channel algorithm is different whether the channel end is alting or not. A s
 
 \FloatBarrier
 
-A key observation to make from the observations in \cref{list:conjecture_both,list:conjecture_nonalting,list:conjecture_alting} is the symmetry of the channel operation; it is invariant whether Tx or Rx is completing the operation. This makes the algorithm very much the same for both sending and receiving on a channel. Another observation to make is how non\hyp{}alting channel ends commit, while alting channel ends may not commit. This skew in committal channel ends allows for important assumptions in the algorithm.
+A key observation to make from the observations in \cref{list:conjecture_both,list:conjecture_nonalting,list:conjecture_alting} is the symmetry of the channel operation; it is invariant whether Tx or Rx is completing the operation. This makes the algorithm very similar for both sending and receiving on a channel. Another observation to make is how non\hyp{}alting channel ends commit, while alting channel ends may not commit. This skew in committal channel ends allows for important assumptions in the algorithm.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -246,15 +249,15 @@ A channel operation for a non\hyp{}alting channel end can be considered to consi
 
 \begin{enumerate}[topsep=0em,itemsep=-1em,partopsep=0.5em,parsep=1em]
     \item \textbf{Check channel is open} -- return if the channel is closed, else continue.
-    \item \textbf{Check for opposite channel end} -- if an opposite channel end is present at the channel, try selecting the channel end. If successful, complete the transmission, reschedule opposite channel end and return ok. Else, continue. \label{step:channel_nonalt_complete}
-    \item \textbf{Wait for opposite channel end} -- register the channel end in the channel and suspend. When rescheduled, check if the item was transmitted or not and return appropriately. \label{step:channel_nonalt_wait}
+    \item \textbf{Check for opposite channel end} -- if an opposite channel end is present at the channel, try selecting the channel end. If successful, complete the transmission, reschedule opposite channel end and return ok. Else, continue.\label{step:channel_nonalt_complete}
+    \item \textbf{Wait for opposite channel end} -- register the channel end in the channel and suspend. When rescheduled, check if the item was transmitted or not and return appropriately.\label{step:channel_nonalt_wait}
 \end{enumerate}
 
-Note that the entire procedure is surrounded by mutual exclusion using the channel lock, because the channel ends must arrive at the channel in a sequential order.
+Note that the entire procedure is surrounded by mutual exclusion using the channel lock, because channel ends must arrive at the channel in a sequential order.
 
-To elaborate on step \cref{step:channel_nonalt_complete}, selecting the opposite channel end is necessary since an alting opposite channel end is not committal to the channel operation, even though it is present. Selecting a non\hyp{}alting channel end is always successful since it is always committal, while an alting channel end may fail. This selection process is further explained in \cref{subsec:alting_design}.
+To elaborate on Step \ref{step:channel_nonalt_complete}, selecting the opposite channel end is necessary since an alting opposite channel end is not committal to the channel operation, even though it is present. Selecting a non\hyp{}alting channel end is always successful since it is always committal, while an alting channel end may fail. This selection process is further explained in \cref{subsec:alting_design}.
 
-Completing the transmission in step \ref{step:channel_nonalt_complete} involves transmitting the item and setting the consumed flag, and checking the transmission in step \ref{step:channel_nonalt_wait} involves checking and resetting the consumed flag.
+Completing the transmission in Step \ref{step:channel_nonalt_complete} involves transmitting the item and setting the consumed flag, and checking the transmission in Step \ref{step:channel_nonalt_wait} involves checking and resetting the consumed flag.
 
 The consumed flag is necessary to signal the suspended channel end if the item was transmitted, even though the channel has been closed. Consider this situation: Tx enters the channel and is suspended, waiting for Rx. Rx enters the channel, completes the transmission, and reschedules Tx. Before Tx resumes execution, Rx closes the channel. Now, when Tx resumes it is impossible to tell if Tx was rescheduled because of completed operation or channel closing. The consumed flag is here to signal the rescheduled channel end was rescheduled because of either case.
 
@@ -262,9 +265,9 @@ The consumed flag is necessary to signal the suspended channel end if the item w
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsubsection{Alting Channel End Algorithm}
 
-An alting channel end also has two cases to consider: either the other channel end is non\hyp{}alting or alting. The non\hyp{}alting case is trivial, because if the opposite end is present then simply complete the transmission. The alting case is however more complicated. 
+An alting channel end has the same two cases to consider: either the other channel end is non\hyp{}alting or alting. The non\hyp{}alting case is trivial, with reasoning that if the opposite end is present then simply complete the transmission. The alting case is however more complicated. 
 
-Before describing the algorithm, first consider this situation: Two processes both alting on the same two channels, however each process has the Tx of one channel and Rx of the other, making a cycle. See \cref{fig:alting_problem} for illustration. Both of these alting processes must somehow agree on which case they both select. Some synchronization between two alting channel ends must therefore exist. Note that this alt\hyp{}to\hyp{}alt synchronization must be asymmetrical to avoid deadlocks.
+Before describing the algorithm, first consider this situation: Two processes both alting on the same two channels, however, each process has the Tx of one channel and Rx of the other, making a cycle. See \cref{fig:alting_problem} for illustration. Both of these alting processes must somehow agree on which case they both select. Some synchronization between two alting channel ends must therefore exist. Note that this alt\hyp{}to\hyp{}alt synchronization must be asymmetrical to avoid deadlocks.
 
 \begin{figure}[h!]
     \centering
@@ -291,13 +294,13 @@ Given this alt\hyp{}to\hyp{}alt synchronization, the alting channel end algorith
     \label{step:self_higher_rank}
 \end{enumerate}
 
-The reason for checking the alt\hyp{}to\hyp{}alt synchronization in step \ref{step:check_alt_sync} before checking the channel is open has to do with acquiring the channel lock. Since the lock is held by the opposite channel end while offering synchronization, an offered synchronization must be resolved before acquiring the channel lock.
+The reason for checking the alt\hyp{}to\hyp{}alt synchronization in Step \ref{step:check_alt_sync} before checking the channel is open has to do with acquiring the channel lock. Since the lock is held by the opposite channel end while offering synchronization, an offered synchronization must be resolved before acquiring the channel lock.
 
-In step \ref{step:opposite_side_nonalting} the alting channel end does not need to synchronize with the opposite channel end if it is non\hyp{}alting, due to selecting a non\hyp{}alting channel ends always succeeds. 
+In Step \ref{step:opposite_side_nonalting}, the alting channel end does not need to synchronize with the opposite channel end if it is non\hyp{}alting, due to selecting a non\hyp{}alting channel end always succeeds. 
 
-The synchronization procedure in step \ref{step:self_lower_rank} is a little more convoluted than stated, since the alt\hyp{}to\hyp{}alt synchronization is only needed if the opposite alting procedure is checking. If it is waiting, normal selection is used.
+The synchronization procedure in Step \ref{step:self_lower_rank} is a little more convoluted than stated, since the alt\hyp{}to\hyp{}alt synchronization is only needed if the opposite alting procedure is checking. If it is waiting, normal selection is used.
 
-The synchronization procedure in step \ref{step:self_higher_rank} is more straightforward. If synchronization is offered, complete the transmission and accept. If it is not offered, check the alting procedure state. If the alting procedure state is checking, try later. If the state is waiting, try normal selection. 
+The synchronization procedure in Step \ref{step:self_higher_rank} is more straightforward. If synchronization is offered, complete the transmission and accept. If it is not offered, check the alting procedure state. If the alting procedure state is checking, try later. If the state is waiting, try normal selection. 
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -305,10 +308,10 @@ The synchronization procedure in step \ref{step:self_higher_rank} is more straig
 \label{subsec:alting_algorithm}
 
 
-The alting algorithm works in three phases: \textit{checking}, \textit{waiting}, and \textit{completing} phase. The waiting phase is only entered if the checking phase results in no selected alternatives.
+The alting algorithm works in three phases: \textit{checking}, \textit{waiting}, and \textit{completing} phase. The waiting phase is only entered if the checking phase results in no selected alternatives. Below are the three phases explained in more detail:
 
 \begin{enumerate}[topsep=0em,itemsep=-1em,partopsep=0.5em,parsep=1em]
-    \item \textbf{Checking phase} -- is the active phase of the procedure, where alternatives can be actively selected. Each enabled channel alternative is entered. Next, all channel alternatives are checked if ready. If one or more are ready, all ready channel alternatives are actively selected in random order. When the first alternative is successfully selected, the alting procedure continues to the completing phase. If no channel alternatives are ready or no channel alternatives are successfully selected, the alting procedure continues to the waiting phase.
+    \item \textbf{Checking phase} -- is the active phase of the procedure, where alternatives can be actively selected. Each enabled channel alternative is entered. Next, all channel alternatives are checked if ready. If one or more are ready, all ready channel alternatives are actively selected in random order. When the first alternative is successfully selected, the alting procedure continues to the completing phase. If no channel alternatives are ready or all channel alternatives results in a failed selection, the alting procedure continues to the waiting phase.
     \item \textbf{Waiting phase} -- is the passive phase of the procedure, where alternatives can be passively selected. If a skip alternative is enabled, the skip alternative is now selected and the procedure continues to the completing phase. If a timer alternative is enabled the procedure suspends itself until the timer expires, else the procedure suspends itself indefinitely. When the procedure is rescheduled, it is either because of a channel alternative passively selecting or the timer alternative has expired, and the corresponding alternative is selected.
     \item \textbf{Completing phase} -- each channel alternative which was entered are now left, and the closure of the selected alternative is executed if present. This completes the alting procedure.
 \end{enumerate}
