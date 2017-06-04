@@ -20,7 +20,7 @@ The desire for an efficient runtime system is a matter of course. An optimal lib
 
 First, the work\hyp{}stealing protocol the schedulers use is not working properly. Ready work is not properly being distributed if the type of work is short lived or rarely deschedules. Schedulers are also inefficient at finding ready work if they are idle. Currently, when a scheduler tries to steal work and fails, it sleeps for $1$ millisecond and tries again. This is obviously not a good approach, as this generates unnecessary CPU time. Therefore, the work stealing protocol between schedulers has a huge improvement.
 
-Regarding the stealing part, a potential improvement is to steal half the available work rather than one, which is what Go does. Given a runtime system with $N$ schedulers, a scheduler with $X$ work can effectively distribute the total work on all schedulers with a minimum number of $N-1$ steals. Compared to only stealing one work at a time, a minimal amount of $X/N$ steals must occur to effectively distribute the total work. If $X$ is large, it is obvious to see the first approach is desirable.
+Regarding the stealing part, a potential improvement is to steal half the available work rather than one, which is what Go does. Given a runtime system with $N$ schedulers, a scheduler with $X$ work can effectively distribute the total work on all schedulers with a minimum number of $N-1$ steals. Compared to only stealing one work at a time, a minimal amount of $X(N-1)/N$ steals must occur to effectively distribute the total work. If $X$ is large, it is obvious to see the first approach is desirable.
 
 Secondly, allocation of processes and process stacks could be improved. Currently, nothing is reused when destroying a process after returning. Stack allocations could be pooled, which is supported by the Boost Context library. 
 
@@ -31,11 +31,11 @@ Lastly, the alt\hyp{}to\hyp{}alt synchronization between an alting channel send 
 \section{C Wrapper API}
 
 
-\Proxc{} is first of all a \Cpp{} library. It would however be interesting and potentially useful be able to use \Proxc{} for C code as well. This would require to create a C wrapper API for \Proxc{}.
+\Proxc{} is, first of all, a \Cpp{} library. It would however be interesting and potentially useful be able to use \Proxc{} for C code as well, which would require to create a C wrapper API for \Proxc{}.
 
 Now, why would it be desirable to use \Proxc{} in C code when ProXC is readily available for creating CSP programs in C? The main arguments are \Proxc{} is portable and has multicore support, both of which would be much more challenging to implement in ProXC.
 
-The biggest hurdle of creating a C wrapper API would be translating \Cpp{} semantics to C. \Proxc{} uses a great amount of templates and move semantics to enforce both type safety, generalized processes, and unique ownership of channel ends. Such semantics have no intuitive translation, and a more restrictive and generalized wrapper API has to probably be created to fully work in C.
+The biggest hurdle of creating a C wrapper API would be translating \Cpp{} semantics to C. \Proxc{} uses a lot of of templates and move semantics to enforce both type safety, generalized processes, and unique ownership of channel ends. Such semantics have no intuitive translation, and a more restrictive and generalized wrapper API has to probably be created to fully work in C.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -44,9 +44,9 @@ The biggest hurdle of creating a C wrapper API would be translating \Cpp{} seman
 
 The feature set provided by \Proxc{} is a good foundation for creating any type of concurrent program with CSP abstractions. However, some library features could potentially be a good extension to the current feature set.
 
-Extended channel input or output, also called extended rendezvous, is about extending the synchronization in a channel send and receive operation. An extended rendezvous allows the sender or receiver to perform additional operations after the channel transmission has occurred, but before both channel ends resumes execution. One could see this as a an ``invisible'' middle\hyp{}man process performing some operation without breaking the existing synchronization.
+Extended channel input or output, also called extended rendezvous, is about extending the synchronization in a channel send and receive operation. An extended rendezvous allows the sender or receiver to perform additional operations after the channel transmission has occurred, but before both channel ends resumes execution. One could see this as an ``invisible'' middle\hyp{}man process performing some operation without breaking the existing synchronization.
 
-Class defined processes, same as in \Cpp{}CSP2 \citep{brown2007c++csp2}, could be an useful addition. Defining a process from a class point of view rather than a function allows for more rigid definitions of processes. A well defined constructor, destructor and execution body can be defined, as well a more intuitive syntax can be used, i.e. calling a class constructor rather than a process constructor or a function allocator.
+Class defined processes, same as in \Cpp{}CSP2 \citep{brown2007c++csp2}, could be an useful addition. Defining a process from a class point of view rather than a function allows for more rigid definitions of processes. A well\hyp{}defined constructor, destructor and execution body can be specified, as well a more intuitive syntax can be used, i.e. calling a class constructor rather than a process constructor or a function allocator.
 
-Asynchronous I/O operations is not supported with \Proxc{}. Any call to a blocking system call effectively blocks the entire kernel\hyp{}thread, halting any progress of processes residing on the same kernel\hyp{}thread. Go has support for asynchronous I/O operations, letting a scheduler with its processes continue on another kernel\hyp{}thread while the blocking process halts the current kernel\hyp{}thread. Asynchronous I/O could be used to implement support for networking and other blocking operations, but would require extensive development of the current implementation.
+Asynchronous I/O operations are not supported with \Proxc{}. Any call to a blocking system call effectively blocks the entire kernel\hyp{}thread, halting any progress of processes residing on the same kernel\hyp{}thread. Go has support for asynchronous I/O operations, letting a scheduler with its processes continue on another kernel\hyp{}thread while the blocking process halts the current kernel\hyp{}thread. Asynchronous I/O could be used to implement support for networking and other blocking operations, but would require extensive development of the current implementation.
 

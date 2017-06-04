@@ -5,42 +5,41 @@
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\chapter{CSP + Multicore = True ?}
+\chapter{CSP + Multi\hyp{}Core = True ?}
 \label{ch:multicore_csp}
 
-
-This chapter takes the motivation described in the introduction and elaborates on why a multicore CSP library would be desirable. Further, a review of existing solutions of multicore CSP programming languages and libraries is presented and how they work.
+The motivation described in the introduction is further elaborated in this chapter on why a CSP framework with multi\hyp{}core support would be desirable. Further, a review of existing solutions of CSP programming languages and libraries with multi\hyp{}core support is presented and how they work.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Motivation behind CSP and Multicore}
+\section{Motivation behind CSP and Multi\hyp{}Core}
 \label{sec:multicore_csp_motivation}
 
 
-As mentioned in the introduction, software can no longer rely on increase in processor performance for an increase in software performance. High performance software which wishes to utilize the full potential of multicore processors needs to do two things: identify the parallel units of work in a program, and efficiently run the parallel work using the available processor resources. 
+As mentioned in the introduction, software can no longer rely on an increase in processor performance for an increase in software performance. High\hyp{}performance software wishing to utilize the full potential of multi\hyp{}core processors needs to do two things: identify the parallel units of work in a program, and efficiently run the parallel work using the available processor resources. 
 
-Why is it important to identify parallel units of work in a program? The short answer is Amdalh's law \citep{amdahl1967validity}. Amdalh's law argues the maximum speedup in a program with infinite number of parallel processors is limited to $^1/_s$, given the fraction of sequential work in the program is $s$. If a program has a fraction of $50\%$ sequential work the maximum speedup possible is $2$, and a fraction of $25\%$ sequential work yields a maximum speedup possible of $4$. There exists more refined models of Amdalh's law developed for different multicore architectures \citep{sun2010reevaluating}, but the point is the same; parallelism is key.
+Why is it important to identify parallel units of work in a program? The short answer is Amdalh's law \citep{amdahl1967validity}. Amdalh's law argues the maximum speedup in a program with infinite number of parallel processors is limited to $^1/_s$, given the fraction of sequential work in the program is $s$. If a program has a fraction of $50\%$ sequential work the maximum speedup possible is $2$, and a fraction of $25\%$ sequential work yields a maximum speedup possible of $4$. There exists more refined models of Amdalh's law developed for different multi\hyp{}core architectures \citep{sun2010reevaluating}, but the point is the same; parallelism is key.
 
-If a programmer cannot reduce the fraction of sequential work, or in other words cannot increase the fraction of parallel work, there is not much to gain from multicore processors. Increasing the fraction of parallel work usually consists of identifying parallelism in sequential work, and subsequently converting said work to parallel units of work. Identifying parallelism is usually the easiest part, e.g. loops and decoupled sections of code are easy to identify and reason whether is parallel or not. How to convert sequential work to parallel work is however another matter, requiring details of scheduling and synchronization.
+If a programmer cannot reduce the fraction of sequential work, or in other words cannot increase the fraction of parallel work, there is not much to gain from multi\hyp{}core architectures. Increasing the fraction of parallel work usually consists of identifying parallelism in sequential work, and subsequently converting said work to parallel units of work. Identifying parallelism is usually the easiest part, e.g. loops and decoupled sections of code are easy to identify and reason whether is parallel or not. How to convert sequential work to parallel work is however another matter, requiring details of scheduling and synchronization.
 
-When parallel work has been identified, how do you efficiently schedule and run the parallel work on the available processor resources? When you want the program to be scalable for all multicore processors, simply hard coding for a given multicore architecture will not suffice. Dynamic multithreading is a solution, which has strategies for dynamically distribute parallel work among available processor cores. Strategies include work stealing and work sharing, but the core philosophy is letting the dynamic multithreading take care of scheduling and synchronization, while the programmer specifies what the parallel work is. Whether dynamic multithreading is implemented with the program or as part of a runtime system underneath achieves the same goal. 
+When parallel work has been identified, how do you efficiently schedule and run the parallel work on the available processor resources? When you want the program to be scalable for all multi\hyp{}core architectures, simply hard coding for a given architecture will not suffice. Dynamic multithreading is a solution, which has strategies for dynamically distribute parallel work among available logical processor cores. Strategies include work stealing and work sharing, but the core philosophy is letting the dynamic multithreading take care of scheduling and synchronization, while the programmer specifies what the parallel work is. Whether dynamic multithreading is implemented with the program or as part of a runtime system underneath achieves the same goal. 
 
-This thesis argues CSP is a good candidate for creating high performance software for multicore processors. First of all, CSP provides expressive and safe abstractions for creating concurrent systems, which also can be statically reasoned whether certain specifications and safety properties are met. Secondly, CSP inherently defines its parallel units of work, as all CSP models are a parallel composition of sequential processes. This inherent parallel nature of CSP essentially identifies all higher level units of parallel work in a program. Now, if a dynamic multithreading scheme was employed together with a CSP framework, it would enable exploiting the parallel nature of multicore processors.
+This thesis argues CSP is a good candidate for creating high\hyp{}performance software for multi\hyp{}core architectures. First of all, CSP provides expressive and correct abstractions for creating concurrent systems, which also can be statically reasoned whether certain specifications and safety properties are met. Secondly, CSP inherently defines its parallel units of work, as all CSP models are a parallel composition of sequential processes. This inherent parallel nature of CSP essentially identifies all higher level units of parallel work in a program. Now, if a dynamic multithreading scheme were to be employed together with a CSP framework, it would enable exploiting parallelism in multi\hyp{}core architectures.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Existing Solutions of CSP and Multicore}
+\section{Existing Solutions of CSP and Multi\hyp{}Core}
 \label{sec:multicore_csp_existing}
 
 
-Combining CSP with dynamic multithreading is no new invention. Even tough dynamic multithreading has usually not been the focus with CSP framework, multiple frameworks does exists with dynamic multithreading, including programming languages and programming libraries. The frameworks varies in availability and age, ranging from proprietary programming languages to open\hyp{}source libraries. Below is a non\hyp{}exhaustive list of dynamic multithreaded CSP frameworks summarized.
+Combining CSP with dynamic multithreading is no new invention. Even tough dynamic multithreading has usually not been the focus with CSP frameworks, multiple frameworks do exist with dynamic multithreading, including programming languages and programming libraries. These frameworks vary in availability and age, ranging from proprietary programming languages to open\hyp{}source libraries. Below is a non\hyp{}exhaustive list of dynamic multithreaded CSP frameworks summarized.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Programming Languages}
 
 
-The minority of programming languages has made concurrency a native part of the language design, yet alone CSP\hyp{}based concurrency. For those languages with CSP as a native influence, dynamic multithreading has usually not been the focus. The first CSP\hyp{}based languages was designed for microprocessor hardware, and with the years transitioned to general\hyp{}purpose programming languages. Below are the three most influential CSP\hyp{}based programming languages with dynamic multithreading presented.
+The minority of programming languages have made concurrency a native part of the language design, yet alone CSP\hyp{}based concurrency. For those languages with CSP as a native influence, dynamic multithreading has usually not been the focus. The first CSP\hyp{}based languages were designed for microprocessor hardware, and with the years transitioned to general\hyp{}purpose programming languages. Below are the three most influential CSP\hyp{}based programming languages with dynamic multithreading presented.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -60,7 +59,7 @@ Sadly, occam was initially only for proprietary use, as support for occam was li
 
 XC is a concurrent programming language, developed for real\hyp{}time embedded parallel computing \citep{watt2009programming}. XC targets the XCore processor architecture \citep{may2009xmos}, both developed by XMOS. XC as a programming language is based on C with custom syntax extensions and restrictions. Concurrency primitives are a native design of XC, providing features which corresponds to the architectural resources on the XCore.
 
-The XCore processor architecture is an embedded multicore architecture, aimed to use for parallel computing. An XCore supports concurrent execution of up to eight threads, with native support for inter\hyp{}thread and inter\hyp{}processor communication and thread scheduling. The main selling point of XCore is the deterministic execution of parallel threads, allowing concurrent system to have real\hyp{}time constraints combined with true parallel computing.
+The XCore processor architecture is an embedded multi\hyp{}core architecture, aimed to be used for parallel computing. An XCore processor supports concurrent execution of up to eight threads, with native support for inter\hyp{}thread and inter\hyp{}processor communication and thread scheduling. The main selling point of XCore is the deterministic execution of parallel threads, allowing concurrent system to have real\hyp{}time constraints combined with true parallel computing.
 
 However, just as occam, XC is only for proprietary use, only supporting the XCore microprocessor architecture. No other implementations of the XC programming language exists, making XC unavailable for the mainstream audience.
 
@@ -71,14 +70,14 @@ However, just as occam, XC is only for proprietary use, only supporting the XCor
 
 Go, also called Golang, is a concurrent programming language, developed by Google \citep{balbaert2012way}. In contrary to occam and XC, Go was developed for the widespread platform use rather than some proprietary hardware. Since its launch in 2009, Go has made its way to platforms such as all desktop platforms, various microprocessors, as well as mobile devices. 
 
-The Go language has built\hyp{}in concurrency primitives as a part of the language, including lightweight processes and channels. A major selling point of Go is the use of dynamic multithreading, where concurrent programs written in Go will by default utilize the available processor cores on the running processor architecture. This, together with native support for asynchronous IO, has made Go very popular for high\hyp{}performance networking and multiprocessing systems.
+The Go language has built\hyp{}in concurrency primitives as a part of the language, including lightweight processes and channels. A major selling point of Go is the use of dynamic multithreading, where concurrent programs written in Go will by default utilize the available logical processor cores on the running processor architecture. This, together with native support for asynchronous IO, has made Go very popular for high\hyp{}performance networking and multiprocessing systems.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Programming Libraries}
 
 
-Several CSP\hyp{}based concurrency libraries has been developed for more popular and established programming languages not supporting CSP natively. Below are the most influential CSP\hyp{}based concurrency libraries with dynamic multithreading presented.
+Several CSP\hyp{}based concurrency libraries have been developed for more popular and established programming languages not supporting CSP natively. Below are the most influential CSP\hyp{}based concurrency libraries with dynamic multithreading presented.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -89,16 +88,16 @@ Several CSP\hyp{}based concurrency libraries has been developed for more popular
 
 \Cppcsp2{} achieves dynamic multithreading by allowing the programmer to define which processes run on which threads. The methodology is that the programmer must identify and define the course\hyp{}grained parallelism between processes, and lets the library take care of the fine\hyp{}grained parallelism between processes on a given thread.
 
-\Cppcsp2{} was the first major implementation of a concurrency library for \Cpp{} which offered CSP abstractions and dynamic multithreading. However, sine its release in 2007, the library is not very well used with modern \Cpp{}. With lack of modern \Cpp{} semantics, as well as in general being hard to develop with, has given \Cppcsp2{} not much widespread use among \Cpp{} programmers.
+\Cppcsp2{} was the first major implementation of a concurrency library for \Cpp{} which offered CSP abstractions and dynamic multithreading. However, sine its release in 2007, the library is not very compatible with modern \Cpp{}. With lack of modern \Cpp{} semantics, as well as in general being hard to develop with, has given \Cppcsp2{} not much widespread use among \Cpp{} programmers.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsubsection{\Cppcsp{}}
 
 
-\Cppcsp{}, \textbf{not} to be mistaken by the precursor of \Cppcsp2{}, is a concurrency library for \Cpp{}. \Cppcsp{} is developed by \citet{chalmers2016cppcsp}, and aims to provide a CSP\hyp{}based concurrency library for modern \Cpp{} which utilizes dynamic multithreading.
+\Cppcsp{} \citep{chalmers2016cppcsp}, \textbf{not} to be mistaken by the precursor of \Cppcsp2{}, is a concurrency library for \Cpp{}. \Cppcsp{} aims to provide a CSP\hyp{}based concurrency library for modern \Cpp{} which utilizes dynamic multithreading.
 
-\Cppcsp{} implements its dynamic multithreading with a kernel threading model, where each process is a kernel\hyp{}thread. Scheduling of the processes is therefore the responsibility of the operating system, rather than the runtime system of the library. The runtime system design is very different from how \Cppcsp2{} implements dynamic multithreading.
+\Cppcsp{} implements its dynamic multithreading with a kernel threading model, where each process is a kernel\hyp{}thread. Scheduling of the processes is therefore the responsibility of the OS, rather than the runtime system of the library. The runtime system design is very different from how \Cppcsp2{} implements dynamic multithreading.
 
 Since its release in 2016, \Cppcsp{} is a rather new programming library. Even though it is much more suited for more modern development of concurrent \Cpp{} programs, the dynamic multithreading implementation can be argued to not be suitable for high\hyp{}performance and scalable concurrent systems.
 
@@ -107,7 +106,7 @@ Since its release in 2016, \Cppcsp{} is a rather new programming library. Even t
 \subsubsection{Boost.Fiber}
 
 
-Boost.Fiber is a concurrency library for \Cpp{} \citep{kowalke2017boost}, developed as a part of the \Cpp{} Boost libraries. From the project description, ``\textit{Boost.Fiber provides a framework for micro-/userland-threads (fibers) scheduled cooperatively}''. A selection of concurrency primitives which are based on CSP is provided by Boost.Fiber, such as channels.
+Boost.Fiber \citep{kowalke2017boost} is a concurrency library for \Cpp{}, developed as a part of the \Cpp{} Boost libraries. From the project description, ``\textit{Boost.Fiber provides a framework for micro-/userland-threads (fibers) scheduled cooperatively}''. A selection of concurrency primitives which are based on CSP is provided by Boost.Fiber, such as channels.
 
 Boost.Fiber has support for dynamic multithreading to cooperatively schedule fibers across multiple processor cores. Dynamic multithreading is implemented by having multiple schedulers running on multiple kernel\hyp{}threads, using work stealing for distributing work among the schedulers.
 
